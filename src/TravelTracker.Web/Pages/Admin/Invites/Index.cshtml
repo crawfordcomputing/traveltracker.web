@@ -1,0 +1,103 @@
+@page
+@model TravelTracker.Web.Pages.Admin.Invites.IndexModel
+@{ ViewData["Title"] = "Invitations"; }
+
+<h1 class="h3 mb-3">Invitations</h1>
+
+@if (TempData["InviteLink"] is string link)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Invite created</strong> for <code>@TempData["InviteEmail"]</code>.
+        Send them this one-time link:
+        <div class="input-group mt-2">
+            <input class="form-control user-select-all" value="@link" readonly />
+        </div>
+        <div class="small mt-1">Copy it now — the link can't be shown again.</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">New invite</h2>
+                <form method="post" asp-page-handler="Create">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="mb-2">
+                        <label asp-for="Input.Email" class="form-label"></label>
+                        <input asp-for="Input.Email" class="form-control" />
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="Input.Role" class="form-label"></label>
+                        <select asp-for="Input.Role" asp-items="Model.RoleOptions" class="form-select"></select>
+                        <span asp-validation-for="Input.Role" class="text-danger"></span>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="Input.DepartmentId" class="form-label"></label>
+                        <select asp-for="Input.DepartmentId" asp-items="Model.Departments" class="form-select">
+                            <option value="">(none)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.ExpiresInDays" class="form-label"></label>
+                        <input asp-for="Input.ExpiresInDays" class="form-control" type="number" min="1" max="60" />
+                        <span asp-validation-for="Input.ExpiresInDays" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create invite</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr><th>Email</th><th>Role</th><th>Dept</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var i in Model.Invites)
+            {
+                <tr>
+                    <td>@i.Email</td>
+                    <td>@i.Role</td>
+                    <td>@(i.Department ?? "—")</td>
+                    <td>
+                        @if (i.AcceptedAt is not null)
+                        {
+                            <span class="badge bg-success">Accepted</span>
+                        }
+                        else if (i.Expired)
+                        {
+                            <span class="badge bg-secondary">Expired</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info text-dark">Pending</span>
+                            <span class="small text-muted">exp @i.ExpiresAt.ToString("yyyy-MM-dd")</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (i.AcceptedAt is null)
+                        {
+                            <form method="post" asp-page-handler="Revoke" asp-route-id="@i.Id"
+                                  onsubmit="return confirm('Revoke invite for @i.Email?');" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Invites.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted">No invitations yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<a asp-page="/Admin/Index" class="btn btn-link">Back to admin</a>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

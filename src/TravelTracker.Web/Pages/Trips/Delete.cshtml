@@ -1,0 +1,18 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Trips.DeleteModel
+@{ ViewData["Title"] = "Delete trip"; }
+
+<h1 class="h3 mb-3">Delete trip</h1>
+<div class="alert alert-danger">
+    This permanently removes the trip and its @Model.Trip.Destinations.Count itinerary leg(s).
+</div>
+<dl class="row">
+    <dt class="col-sm-3">Purpose</dt><dd class="col-sm-9">@Model.Trip.Purpose</dd>
+    <dt class="col-sm-3">Traveler</dt><dd class="col-sm-9">@(Model.Trip.Traveler?.DisplayName ?? "—")</dd>
+    <dt class="col-sm-3">Dates</dt>
+    <dd class="col-sm-9">@Model.Trip.StartDate.ToString("MMM d") &ndash; @Model.Trip.EndDate.ToString("MMM d, yyyy")</dd>
+</dl>
+<form method="post" asp-route-id="@Model.Trip.Id">
+    <button type="submit" class="btn btn-danger">Delete trip</button>
+    <a asp-page="Details" asp-route-id="@Model.Trip.Id" class="btn btn-link">Cancel</a>
+</form>

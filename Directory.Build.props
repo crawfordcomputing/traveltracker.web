@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Solution-wide build quality gate. Applies to every project (web + tests).
+       Warnings fail the build so code-quality drift can't accumulate silently;
+       the existing .editorconfig is enforced at build time. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+
+</Project>

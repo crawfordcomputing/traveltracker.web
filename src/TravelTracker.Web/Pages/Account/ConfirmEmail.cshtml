@@ -1,0 +1,24 @@
+@page
+@model TravelTracker.Web.Pages.Account.ConfirmEmailModel
+@{ ViewData["Title"] = "Confirm email"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Email confirmation</h1>
+
+        @if (Model.Confirmed)
+        {
+            <div class="alert alert-success">
+                Thanks, your email is confirmed. You can now sign in.
+            </div>
+            <a asp-page="/Account/Login" class="btn btn-primary">Sign in</a>
+        }
+        else
+        {
+            <div class="alert alert-danger">
+                This confirmation link is invalid or has expired.
+            </div>
+            <a asp-page="/Account/ResendEmailConfirmation" class="btn btn-link px-0">Request a new link</a>
+        }
+    </div>
+</div>

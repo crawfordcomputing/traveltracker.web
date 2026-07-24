@@ -1,0 +1,19 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.GenerateRecoveryCodesModel
+@{ ViewData["Title"] = "Reset recovery codes"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-3">Reset recovery codes</h1>
+
+        <div class="alert alert-warning">
+            Generating a new set immediately invalidates your existing recovery codes.
+            You&rsquo;ll be shown the new codes once.
+        </div>
+
+        <form method="post">
+            <button type="submit" class="btn btn-danger">Generate new recovery codes</button>
+            <a class="btn btn-link" asp-page="./TwoFactorAuthentication">Cancel</a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,64 @@
+@page
+@model TravelTracker.Web.Pages.Trips.CreateModel
+@{ ViewData["Title"] = "New trip"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-3">New trip</h1>
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    @if (Model.ShowTraveler)
+    {
+        <div class="mb-3">
+            <label asp-for="Input.TravelerId" class="form-label"></label>
+            <select asp-for="Input.TravelerId" asp-items="Model.Travelers" class="form-select"></select>
+            <div class="form-text">Defaults to you; pick another traveler to book on their behalf.</div>
+        </div>
+    }
+    <div class="mb-3">
+        <label asp-for="Input.Purpose" class="form-label"></label>
+        <input asp-for="Input.Purpose" class="form-control" />
+        <span asp-validation-for="Input.Purpose" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.StartDate" class="form-label"></label>
+        <input asp-for="Input.StartDate" class="form-control" />
+        <span asp-validation-for="Input.StartDate" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.EndDate" class="form-label"></label>
+        <input asp-for="Input.EndDate" class="form-control" />
+        <span asp-validation-for="Input.EndDate" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Type" class="form-label"></label>
+        <select asp-for="Input.Type"
+                asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.TripType>()"
+                class="form-select"></select>
+    </div>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.ProjectCodeId" class="form-label"></label>
+            <select asp-for="Input.ProjectCodeId" asp-items="Model.ProjectCodes" class="form-select">
+                <option value="">— none —</option>
+            </select>
+            <span asp-validation-for="Input.ProjectCodeId" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.CostCenterId" class="form-label"></label>
+            <select asp-for="Input.CostCenterId" asp-items="Model.CostCenters" class="form-select">
+                <option value="">— none —</option>
+            </select>
+            <span asp-validation-for="Input.CostCenterId" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Notes" class="form-label"></label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Input.Notes" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Create trip</button>
+    <a asp-page="Index" class="btn btn-link">Cancel</a>
+</form>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

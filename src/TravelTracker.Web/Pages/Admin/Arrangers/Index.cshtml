@@ -1,0 +1,108 @@
+@page
+@model TravelTracker.Web.Pages.Admin.Arrangers.IndexModel
+@{ ViewData["Title"] = "Arrangers"; }
+
+<h1 class="h3 mb-3">Arrangers</h1>
+<p class="text-muted">
+    A travel arranger acts only for the travelers assigned to them. Give a user the
+    <strong>Arranger</strong> role under <a asp-page="/Admin/Users/Index">Users</a> to have them appear here.
+</p>
+
+@if (TempData["Status"] is string status)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @status
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Arrangers</h2>
+                @if (Model.Arrangers.Count == 0)
+                {
+                    <p class="text-muted mb-0">No users hold the Arranger role yet.</p>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var a in Model.Arrangers)
+                        {
+                            <a asp-page="Index" asp-route-ArrangerId="@a.Id"
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(Model.Selected?.Id == a.Id ? "active" : "")">
+                                <span>@a.DisplayName <small class="d-block text-muted">@a.Email</small></span>
+                                <span class="badge bg-secondary rounded-pill">@a.Count</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        @if (Model.Selected is not null)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5">Travelers assigned to @Model.Selected.DisplayName</h2>
+
+                    <form method="post" asp-page-handler="Assign" class="row g-2 align-items-end mb-3">
+                        <input type="hidden" name="ArrangerId" value="@Model.Selected.Id" />
+                        <div class="col-auto flex-grow-1">
+                            <label class="form-label" for="TravelerId">Add traveler</label>
+                            <select id="TravelerId" name="TravelerId" asp-items="Model.AddCandidates" class="form-select">
+                                <option value="">— choose a traveler —</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </div>
+                    </form>
+
+                    @if (Model.Assigned.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No travelers assigned. This arranger can act only for their own trips.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Traveler</th><th>Email</th><th></th></tr></thead>
+                            <tbody>
+                            @foreach (var t in Model.Assigned)
+                            {
+                                <tr>
+                                    <td>@t.DisplayName</td>
+                                    <td>@(t.Email ?? "—")</td>
+                                    <td class="text-end">
+                                        <form method="post" asp-page-handler="Unassign"
+                                              asp-route-assignmentId="@t.AssignmentId" class="d-inline"
+                                              onsubmit="return confirm('Remove @t.DisplayName from this arranger?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light border">Select an arranger to manage their travelers.</div>
+        }
+    </div>
+</div>
+
+<a asp-page="/Admin/Index" class="btn btn-link mt-3">Back to admin</a>

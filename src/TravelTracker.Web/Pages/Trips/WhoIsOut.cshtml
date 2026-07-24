@@ -1,0 +1,69 @@
+@page
+@model TravelTracker.Web.Pages.Trips.WhoIsOutModel
+@using TravelTracker.Web.Domain
+@{ ViewData["Title"] = "Who's out"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Who's out</h1>
+    <a asp-page="Index" class="btn btn-link">Back to trips</a>
+</div>
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(Model.Range == "today" ? "active" : "")" asp-route-range="today">Today</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.Range == "week" ? "active" : "")" asp-route-range="week">Next 7 days</a>
+    </li>
+</ul>
+
+<p class="text-muted">
+    @Model.WindowStart.ToString("MMM d, yyyy")@(Model.Range == "week" ? $" – {Model.WindowEnd:MMM d, yyyy}" : "")
+</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-light border">No one is traveling in this window.</div>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead><tr>
+            <th>Traveler</th><th>Base</th><th>Where</th><th>Purpose</th><th>Dates</th><th>Passport</th>
+        </tr></thead>
+        <tbody>
+        @{ var todayForPassport = Model.WindowStart; }
+        @foreach (var r in Model.Rows)
+        {
+            <tr>
+                <td>@r.Traveler</td>
+                <td>@r.BaseLocation</td>
+                <td>@r.Where</td>
+                <td><a asp-page="Details" asp-route-id="@r.TripId">@r.Purpose</a></td>
+                <td>@r.Start.ToString("MMM d") &ndash; @r.End.ToString("MMM d, yyyy")</td>
+                @{
+                    var passportStatus = PassportExpiryStatus.Evaluate(r.PassportExpiry, todayForPassport);
+                    var expiryText = r.PassportExpiry?.ToString("MMM d, yyyy") ?? "";
+                }
+                <td>
+                    @switch (passportStatus)
+                    {
+                        case PassportValidity.Expired:
+                            <span class="badge bg-danger" title="@("Expired " + expiryText)">Passport expired</span>
+                            break;
+                        case PassportValidity.ExpiringSoon:
+                            <span class="badge bg-warning text-dark" title="@("Expires " + expiryText)">Expires soon</span>
+                            break;
+                        case PassportValidity.Ok:
+                            <span class="text-muted small">@expiryText</span>
+                            break;
+                        default:
+                            <span class="text-muted">—</span>
+                            break;
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

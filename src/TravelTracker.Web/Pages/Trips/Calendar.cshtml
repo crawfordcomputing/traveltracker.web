@@ -1,0 +1,55 @@
+@page
+@model TravelTracker.Web.Pages.Trips.CalendarModel
+@{ ViewData["Title"] = "Trip calendar"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@Model.MonthName</h1>
+    <div>
+        <a class="btn btn-outline-secondary btn-sm" asp-page="Calendar" asp-route-year="@Model.Prev.y" asp-route-month="@Model.Prev.m">&laquo; Prev</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-page="Calendar">Today</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-page="Calendar" asp-route-year="@Model.Next.y" asp-route-month="@Model.Next.m">Next &raquo;</a>
+        <a class="btn btn-outline-primary btn-sm" asp-page="Index">List view</a>
+    </div>
+</div>
+
+<table class="table table-bordered calendar-grid">
+    <thead>
+        <tr class="text-center">
+            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+        </tr>
+    </thead>
+    <tbody>
+    @{
+        var cell = 0;
+        var totalCells = Model.LeadingBlanks + Model.DaysInMonth;
+        var rows = (int)Math.Ceiling(totalCells / 7.0);
+    }
+    @for (var r = 0; r < rows; r++)
+    {
+        <tr style="height:6rem;">
+        @for (var c = 0; c < 7; c++)
+        {
+            var dayNum = cell - Model.LeadingBlanks + 1;
+            if (dayNum >= 1 && dayNum <= Model.DaysInMonth)
+            {
+                var day = new DateOnly(Model.Year, Model.Month, dayNum);
+                <td class="align-top">
+                    <div class="small text-muted">@dayNum</div>
+                    @foreach (var t in Model.TripsOn(day))
+                    {
+                        <a class="d-block text-truncate badge bg-primary text-white mb-1"
+                           asp-page="Details" asp-route-id="@t.Id"
+                           title="@t.Purpose (@t.Traveler?.DisplayName)">@t.Purpose</a>
+                    }
+                </td>
+            }
+            else
+            {
+                <td class="bg-light"></td>
+            }
+            cell++;
+        }
+        </tr>
+    }
+    </tbody>
+</table>

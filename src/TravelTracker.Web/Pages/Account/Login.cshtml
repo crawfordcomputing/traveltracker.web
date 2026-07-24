@@ -1,0 +1,53 @@
+@page
+@model TravelTracker.Web.Pages.Account.LoginModel
+@{ ViewData["Title"] = "Log in"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Log in</h1>
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger">@Model.ErrorMessage</div>
+        }
+        @if (Model.ResetSuccess)
+        {
+            <div class="alert alert-success">Your password has been reset. Sign in with your new password.</div>
+        }
+        @if (Model.NeedsEmailConfirmation)
+        {
+            <div class="alert alert-warning">
+                Your email address isn't confirmed yet.
+                <a asp-page="/Account/ResendEmailConfirmation">Resend the confirmation link</a>.
+            </div>
+        }
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+            <div class="mb-3">
+                <label asp-for="Input.Email" class="form-label"></label>
+                <input asp-for="Input.Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label"></label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+            <div class="form-check mb-3">
+                <input asp-for="Input.RememberMe" class="form-check-input" />
+                <label asp-for="Input.RememberMe" class="form-check-label"></label>
+            </div>
+            <button type="submit" class="btn btn-primary">Log in</button>
+            <a asp-page="/Account/Register" class="btn btn-link">Create an account</a>
+        </form>
+        <a asp-page="/Account/ForgotPassword" class="btn btn-link px-0">Forgot your password?</a>
+        @if (Model.EntraIdEnabled)
+        {
+            <hr />
+            <form method="post" asp-page="/Account/ExternalLogin" asp-route-provider="EntraId">
+                <button type="submit" class="btn btn-outline-secondary">Sign in with Microsoft Entra ID</button>
+            </form>
+        }
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

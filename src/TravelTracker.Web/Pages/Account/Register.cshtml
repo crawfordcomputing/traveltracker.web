@@ -1,0 +1,63 @@
+@page
+@model TravelTracker.Web.Pages.Account.RegisterModel
+@{ ViewData["Title"] = "Register"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Create an account</h1>
+
+        @if (!Model.RegistrationAvailable)
+        {
+            <div class="alert alert-secondary">
+                @if (!string.IsNullOrWhiteSpace(Model.Token))
+                {
+                    <text>This invitation link is invalid, expired, or has already been used. Ask an administrator for a new invite.</text>
+                }
+                else
+                {
+                    <text>Self-service registration is disabled. Ask an administrator to create your account or send you an invitation.</text>
+                }
+            </div>
+            <a asp-page="/Account/Login" class="btn btn-link px-0">Back to sign in</a>
+        }
+        else
+        {
+            @if (Model.IsInvite)
+            {
+                <p class="text-muted">You've been invited to join. Set your name and password to finish.</p>
+            }
+            <form method="post">
+                @if (!string.IsNullOrWhiteSpace(Model.Token))
+                {
+                    <input type="hidden" asp-for="Token" />
+                }
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                <div class="mb-3">
+                    <label asp-for="Input.DisplayName" class="form-label"></label>
+                    <input asp-for="Input.DisplayName" class="form-control" />
+                    <span asp-validation-for="Input.DisplayName" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.Email" class="form-label"></label>
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username"
+                           readonly="@Model.IsInvite" />
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.Password" class="form-label"></label>
+                    <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.ConfirmPassword" class="form-label"></label>
+                    <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+                <a asp-page="/Account/Login" class="btn btn-link">Already have an account?</a>
+            </form>
+        }
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

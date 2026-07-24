@@ -1,0 +1,46 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.TwoFactorAuthenticationModel
+@{ ViewData["Title"] = "Two-factor authentication"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-3">Two-factor authentication (2FA)</h1>
+
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert alert-success">@Model.StatusMessage</div>
+        }
+
+        @if (Model.Is2faEnabled)
+        {
+            <p><span class="badge bg-success">Enabled</span> Your account is protected by an authenticator app.</p>
+
+            @if (Model.RecoveryCodesLeft == 0)
+            {
+                <div class="alert alert-danger">
+                    You have no recovery codes left. Generate a new set before you lose access.
+                </div>
+            }
+            else if (Model.RecoveryCodesLeft <= 3)
+            {
+                <div class="alert alert-warning">
+                    You have @Model.RecoveryCodesLeft recovery code(s) left. Consider generating a new set.
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">You have @Model.RecoveryCodesLeft recovery codes left.</p>
+            }
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-secondary" asp-page="./GenerateRecoveryCodes">Reset recovery codes</a>
+                <a class="btn btn-outline-danger" asp-page="./Disable2fa">Disable 2FA</a>
+            </div>
+        }
+        else
+        {
+            <p><span class="badge bg-secondary">Not enabled</span> Add an authenticator app for a second sign-in factor.</p>
+            <a class="btn btn-primary" asp-page="./EnableAuthenticator">Set up authenticator app</a>
+        }
+    </div>
+</div>

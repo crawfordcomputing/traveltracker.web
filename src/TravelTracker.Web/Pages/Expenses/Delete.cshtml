@@ -1,0 +1,31 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Expenses.DeleteModel
+@{ ViewData["Title"] = "Delete expense"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-3">Delete expense?</h1>
+
+<dl class="row">
+    <dt class="col-sm-3">Category</dt>
+    <dd class="col-sm-9">@Model.Expense.Category</dd>
+    <dt class="col-sm-3">Date</dt>
+    <dd class="col-sm-9">@Model.Expense.Date.ToString("MMM d, yyyy")</dd>
+    <dt class="col-sm-3">Amount</dt>
+    <dd class="col-sm-9">@Model.Expense.BaseAmount.ToString("C") @Model.Expense.Currency</dd>
+    @if (!string.IsNullOrEmpty(Model.Expense.Vendor))
+    {
+        <dt class="col-sm-3">Vendor</dt>
+        <dd class="col-sm-9">@Model.Expense.Vendor</dd>
+    }
+</dl>
+
+@if (!string.IsNullOrEmpty(Model.Expense.ReceiptPath))
+{
+    <p class="text-muted">The attached receipt will also be deleted.</p>
+}
+
+<form method="post">
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-page="/Trips/Details" asp-route-id="@Model.Expense.TripId" class="btn btn-link">Cancel</a>
+</form>
+</div></div>

@@ -1,0 +1,34 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Mileage.DeleteModel
+@{ ViewData["Title"] = "Delete mileage"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-3">Delete mileage?</h1>
+
+<dl class="row">
+    <dt class="col-sm-4">Date</dt>
+    <dd class="col-sm-8">@Model.Entry.Date.ToString("MMM d, yyyy")</dd>
+    <dt class="col-sm-4">Distance</dt>
+    <dd class="col-sm-8">
+        @Model.Entry.Distance.ToString("0.#") @Model.Entry.Unit
+        @if (Model.Entry.IsRoundTrip) { <span class="badge bg-secondary">Round trip</span> }
+    </dd>
+    <dt class="col-sm-4">Amount</dt>
+    <dd class="col-sm-8">@Model.Entry.Amount.ToString("C")</dd>
+    @if (!string.IsNullOrEmpty(Model.Entry.Purpose))
+    {
+        <dt class="col-sm-4">Purpose</dt>
+        <dd class="col-sm-8">@Model.Entry.Purpose</dd>
+    }
+    @if (Model.Entry.Waypoints.Count > 0)
+    {
+        <dt class="col-sm-4">Route</dt>
+        <dd class="col-sm-8">@string.Join(" → ", Model.Entry.Waypoints.OrderBy(w => w.Sequence).Select(w => w.Label))</dd>
+    }
+</dl>
+
+<form method="post">
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-page="/Trips/Details" asp-route-id="@Model.Entry.TripId" class="btn btn-link">Cancel</a>
+</form>
+</div></div>

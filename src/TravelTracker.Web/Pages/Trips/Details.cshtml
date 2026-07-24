@@ -1,0 +1,375 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Trips.DetailsModel
+@{ ViewData["Title"] = Model.Trip.Purpose; }
+
+@if (TempData["TripError"] is string err)
+{
+    <div class="alert alert-warning">@err</div>
+}
+
+@if (Model.Conflicts.Count > 0)
+{
+    <div class="alert alert-warning">
+        <strong>Possible double-booking.</strong> This traveler has
+        @Model.Conflicts.Count overlapping trip(s):
+        @string.Join(", ", Model.Conflicts.Select(c =>
+            $"{c.Purpose} ({c.StartDate:MMM d}–{c.EndDate:MMM d})"))
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h3 mb-1">@Model.Trip.Purpose</h1>
+        <div class="text-muted">
+            @(Model.Trip.Traveler?.DisplayName ?? "—") &middot;
+            @Model.Trip.StartDate.ToString("MMM d") &ndash; @Model.Trip.EndDate.ToString("MMM d, yyyy")
+        </div>
+        @if (Model.Trip.Traveler?.Approver is not null)
+        {
+            <div class="text-muted small">Approver: @Model.Trip.Traveler.Approver.DisplayName</div>
+        }
+    </div>
+    <partial name="_StatusBadge" model="Model.Trip.Status" />
+</div>
+
+@{
+    var meta = new List<string>();
+    if (Model.Trip.Type != TravelTracker.Web.Data.Entities.TripType.Unspecified) meta.Add(Model.Trip.Type.ToString());
+    if (Model.Trip.ProjectCode is not null) meta.Add($"Project {Model.Trip.ProjectCode.Code}");
+    if (Model.Trip.CostCenter is not null) meta.Add($"Cost center {Model.Trip.CostCenter.Code}");
+}
+@if (meta.Count > 0)
+{
+    <p class="text-muted small mb-2">@string.Join(" · ", meta)</p>
+}
+
+@if (Model.Trip.Status == TravelTracker.Web.Data.Entities.TripStatus.Cancelled
+     && !string.IsNullOrEmpty(Model.Trip.CancellationReason))
+{
+    <p class="text-muted"><strong>Cancelled:</strong> @Model.Trip.CancellationReason</p>
+}
+
+@if (!string.IsNullOrEmpty(Model.Trip.Notes))
+{
+    <p>@Model.Trip.Notes</p>
+}
+
+<div class="mb-4">
+    @foreach (var s in Model.NextStates)
+    {
+        @if (s == TravelTracker.Web.Data.Entities.TripStatus.Cancelled)
+        {
+            <form method="post" asp-page-handler="Status" asp-route-id="@Model.Trip.Id"
+                  class="d-inline-flex gap-1 align-items-center">
+                <input type="hidden" name="target" value="@s" />
+                <input type="text" name="reason" class="form-control form-control-sm"
+                       placeholder="Reason to cancel" style="width: 12rem;" />
+                <button type="submit" class="btn btn-sm btn-outline-danger">Cancel trip</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Status" asp-route-id="@Model.Trip.Id" class="d-inline">
+                <input type="hidden" name="target" value="@s" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Mark @s</button>
+            </form>
+        }
+    }
+    <a asp-page="Details" asp-page-handler="Ics" asp-route-id="@Model.Trip.Id"
+       class="btn btn-sm btn-outline-secondary">Add to calendar</a>
+    <a asp-page="Edit" asp-route-id="@Model.Trip.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+    <a asp-page="Delete" asp-route-id="@Model.Trip.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+</div>
+
+<h2 class="h5">Itinerary</h2>
+@{ var legs = Model.Trip.Destinations.OrderBy(x => x.Sequence).ToList(); }
+@if (legs.Count == 0)
+{
+    <p class="text-muted">No legs yet. Add the first stop below.</p>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <thead><tr>
+            <th>#</th><th>City</th><th>State</th><th>Country</th>
+            <th>Transport</th><th>Lodging</th><th>Conf #</th>
+            <th>Arrive</th><th>Depart</th><th>Notes</th><th></th>
+        </tr></thead>
+        <tbody>
+        @foreach (var leg in legs)
+        {
+            <tr>
+                <td>@leg.Sequence</td>
+                <td>@leg.City</td>
+                <td>@leg.State</td>
+                <td>@leg.Country</td>
+                <td>@(leg.TransportMode == TravelTracker.Web.Data.Entities.TransportMode.Unspecified ? "" : leg.TransportMode.ToString())</td>
+                <td>@leg.LodgingName</td>
+                <td>@leg.ConfirmationNumber</td>
+                <td>@leg.ArriveDate.ToString("MMM d, yyyy")</td>
+                <td>@leg.DepartDate.ToString("MMM d, yyyy")</td>
+                <td>@leg.Notes</td>
+                <td class="text-end text-nowrap">
+                    <a asp-page="EditLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id"
+                       class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form method="post" asp-page-handler="RemoveLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<div class="card mt-3"><div class="card-body">
+    <h3 class="h6">Add a leg</h3>
+    <form method="post" asp-page-handler="AddLeg" asp-route-id="@Model.Trip.Id" class="row g-2">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.City" class="form-label"></label>
+            <input asp-for="NewLeg.City" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.State" class="form-label"></label>
+            <select asp-for="NewLeg.State" asp-items="Model.States" class="form-select">
+                <option value="">—</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.Country" class="form-label"></label>
+            <select asp-for="NewLeg.Country" asp-items="Model.Countries" class="form-select"></select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.TransportMode" class="form-label"></label>
+            <select asp-for="NewLeg.TransportMode"
+                    asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.TransportMode>()"
+                    class="form-select"></select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.ArriveDate" class="form-label"></label>
+            <input asp-for="NewLeg.ArriveDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.DepartDate" class="form-label"></label>
+            <input asp-for="NewLeg.DepartDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.LodgingName" class="form-label"></label>
+            <input asp-for="NewLeg.LodgingName" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="NewLeg.ConfirmationNumber" class="form-label"></label>
+            <input asp-for="NewLeg.ConfirmationNumber" class="form-control" />
+        </div>
+        <div class="col-md-9">
+            <label asp-for="NewLeg.Notes" class="form-label"></label>
+            <input asp-for="NewLeg.Notes" class="form-control" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Add leg</button>
+        </div>
+    </form>
+</div></div>
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">Expenses</h2>
+    <div class="d-flex gap-2">
+        <form method="post" asp-page-handler="CloneExpenses" asp-route-id="@Model.Trip.Id" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Clone last trip's expenses</button>
+        </form>
+        <a asp-page="/Expenses/Create" asp-route-tripId="@Model.Trip.Id" class="btn btn-sm btn-primary">Add expense</a>
+    </div>
+</div>
+
+@if (TempData["ExpenseInfo"] is string expenseInfo)
+{
+    <div class="alert alert-info py-2 mt-2">@expenseInfo</div>
+}
+
+@if (Model.Expenses.Count == 0)
+{
+    <p class="text-muted mt-2">No expenses yet.</p>
+}
+else
+{
+    <table class="table table-sm align-middle mt-2">
+        <thead><tr>
+            <th>Date</th><th>Category</th><th>Vendor</th>
+            <th class="text-end">Amount</th><th>Receipt</th><th>Reimbursed</th><th></th>
+        </tr></thead>
+        <tbody>
+        @foreach (var e in Model.Expenses)
+        {
+            var flag = TravelTracker.Web.Domain.ExpensePolicyCheck.Flag(e);
+            var splitReconciled = e.Splits.Count > 0
+                && TravelTracker.Web.Domain.ExpenseSplitMath.Reconciles(e.BaseAmount, e.Splits.Select(s => s.BaseAmount));
+            <tr>
+                <td class="text-nowrap">@e.Date.ToString("MMM d, yyyy")</td>
+                <td>
+                    @e.Category
+                    @if (e.IsPersonal)
+                    {
+                        <span class="badge bg-secondary">Personal</span>
+                    }
+                    @if (flag is not null)
+                    {
+                        <span class="badge bg-warning text-dark" title="@flag">Over guideline</span>
+                    }
+                    @if (e.Splits.Count > 0)
+                    {
+                        <span class="badge @(splitReconciled ? "bg-info text-dark" : "bg-warning text-dark")"
+                              title="@(splitReconciled ? "Allocated across categories" : "Split not fully allocated")">Split</span>
+                    }
+                    @if (!string.IsNullOrEmpty(e.MissingReceiptAffidavit))
+                    {
+                        <span class="badge bg-light text-dark border" title="@e.MissingReceiptAffidavit">Affidavit</span>
+                    }
+                    @if (splitReconciled)
+                    {
+                        <div class="small text-muted">
+                            @string.Join(" · ", e.Splits.Select(s => $"{s.Category} {s.BaseAmount:C}"))
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(e.Attendees))
+                    {
+                        <div class="small text-muted">Attendees: @e.Attendees</div>
+                    }
+                </td>
+                <td>@e.Vendor</td>
+                <td class="text-end text-nowrap">@e.BaseAmount.ToString("C")</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(e.ReceiptPath))
+                    {
+                        <a asp-page="/Expenses/Receipt" asp-route-id="@e.Id" target="_blank">View</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </td>
+                <td class="text-nowrap">
+                    <form method="post" asp-page-handler="ToggleReimbursed" asp-route-id="@Model.Trip.Id"
+                          asp-route-expenseId="@e.Id" class="d-inline">
+                        @if (e.Reimbursed)
+                        {
+                            <button type="submit" class="btn btn-sm btn-success py-0"
+                                    title="Reimbursed@(e.ReimbursedDate is null ? "" : " " + e.ReimbursedDate.Value.ToString("MMM d, yyyy")). Click to undo.">
+                                ✓ @(e.ReimbursedDate?.ToString("MMM d"))
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Mark reimbursed">Mark paid</button>
+                        }
+                    </form>
+                </td>
+                <td class="text-end text-nowrap">
+                    <a asp-page="/Expenses/Split" asp-route-id="@e.Id" class="btn btn-sm btn-outline-secondary">Split</a>
+                    <a asp-page="/Expenses/Edit" asp-route-id="@e.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a asp-page="/Expenses/Delete" asp-route-id="@e.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="3" class="text-end">Reimbursable</th>
+                <th class="text-end">@Model.Rollup.Reimbursable.ToString("C")</th>
+                <th colspan="3"></th>
+            </tr>
+            @if (Model.Rollup.Personal > 0)
+            {
+                <tr>
+                    <td colspan="3" class="text-end text-muted">Personal (not reimbursed)</td>
+                    <td class="text-end text-muted">@Model.Rollup.Personal.ToString("C")</td>
+                    <td colspan="3"></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end text-muted">Total spend</td>
+                    <td class="text-end text-muted">@Model.Rollup.Total.ToString("C")</td>
+                    <td colspan="3"></td>
+                </tr>
+            }
+        </tfoot>
+    </table>
+
+    @if (Model.Rollup.ByCategory.Count > 1)
+    {
+        <p class="text-muted small">
+            By category:
+            @string.Join(" · ", Model.Rollup.ByCategory.Select(c => $"{c.Category} {c.Total:C}"))
+        </p>
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">Mileage</h2>
+    <a asp-page="/Mileage/Create" asp-route-tripId="@Model.Trip.Id" class="btn btn-sm btn-primary">Add mileage</a>
+</div>
+
+@if (Model.MileageEntries.Count == 0)
+{
+    <p class="text-muted mt-2">No mileage yet.</p>
+}
+else
+{
+    <table class="table table-sm align-middle mt-2">
+        <thead><tr>
+            <th>Date</th><th>Route</th><th class="text-end">Distance</th>
+            <th class="text-end">Rate</th><th class="text-end">Amount</th><th></th>
+        </tr></thead>
+        <tbody>
+        @foreach (var m in Model.MileageEntries)
+        {
+            var billable = TravelTracker.Web.Domain.MileageMath.BillableDistance(m.Distance, m.IsRoundTrip, m.CommuteDeduction);
+            <tr>
+                <td class="text-nowrap">@m.Date.ToString("MMM d, yyyy")</td>
+                <td>
+                    @if (m.Waypoints.Count > 0)
+                    {
+                        @string.Join(" → ", m.Waypoints.OrderBy(w => w.Sequence).Select(w => w.Label))
+                    }
+                    else if (!string.IsNullOrEmpty(m.Purpose))
+                    {
+                        @m.Purpose
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                    @if (m.IsRoundTrip)
+                    {
+                        <span class="badge bg-secondary">Round trip</span>
+                    }
+                    @if (m.CommuteDeduction > 0)
+                    {
+                        <span class="badge bg-light text-dark" title="Commute deducted">−@m.CommuteDeduction.ToString("0.#") commute</span>
+                    }
+                </td>
+                <td class="text-end text-nowrap">@billable.ToString("0.#") @m.Unit</td>
+                <td class="text-end text-nowrap" title="Frozen at @m.Date.ToString("MMM d, yyyy")">@m.Rate.ToString("0.000")</td>
+                <td class="text-end text-nowrap">@m.Amount.ToString("C")</td>
+                <td class="text-end text-nowrap">
+                    <a asp-page="/Mileage/Edit" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a asp-page="/Mileage/Delete" asp-route-id="@m.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="2" class="text-end">Total mileage</th>
+                <th class="text-end text-nowrap">
+                    @if (Model.MileageTotals.MilesBillable > 0) { <span>@Model.MileageTotals.MilesBillable.ToString("0.#") mi</span> }
+                    @if (Model.MileageTotals.KilometersBillable > 0) { <span>@Model.MileageTotals.KilometersBillable.ToString("0.#") km</span> }
+                </th>
+                <th></th>
+                <th class="text-end">@Model.MileageTotals.Amount.ToString("C")</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+}
+
+<a asp-page="Index" class="btn btn-link mt-3">Back to trips</a>

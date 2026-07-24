@@ -1,0 +1,186 @@
+/* theme.css — foundational design-token layer for Travel Tracker.
+   Loaded AFTER bootstrap.min.css so these overrides win.
+   Scope: tokens + light global overrides only. No per-component styling. */
+
+:root {
+  /* Brand */
+  --tt-brand:        #2563eb;
+  --tt-brand-600:    #1d4ed8;
+  --tt-brand-700:    #1e40af;
+  --tt-brand-soft:   #eff4ff;
+
+  /* Neutral gray scale */
+  --tt-gray-50:  #f8fafc;
+  --tt-gray-100: #f1f5f9;
+  --tt-gray-200: #e2e8f0;
+  --tt-gray-300: #cbd5e1;
+  --tt-gray-500: #64748b;
+  --tt-gray-700: #334155;
+  --tt-gray-900: #0f172a;
+
+  /* Surfaces */
+  --tt-bg:      var(--tt-gray-50);
+  --tt-surface: #ffffff;
+  --tt-border:  var(--tt-gray-200);
+  --tt-text:    var(--tt-gray-900);
+  --tt-muted:   var(--tt-gray-500);
+
+  /* Typography */
+  --tt-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Radius */
+  --tt-radius-sm: 8px;
+  --tt-radius:    12px;
+  --tt-radius-lg: 16px;
+
+  /* Shadows */
+  --tt-shadow-sm: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 3px rgba(15, 23, 42, .05);
+  --tt-shadow:    0 4px 6px -1px rgba(15, 23, 42, .07), 0 2px 4px -2px rgba(15, 23, 42, .06);
+  --tt-shadow-lg: 0 10px 20px -6px rgba(15, 23, 42, .12);
+
+  /* Map Bootstrap primary to brand */
+  --bs-primary: var(--tt-brand);
+  --bs-link-color: var(--tt-brand-600);
+  --bs-link-hover-color: var(--tt-brand-700);
+}
+
+/* ---- Base ---- */
+body {
+  font-family: var(--tt-font);
+  color: var(--tt-text);
+  background-color: var(--tt-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6, .navbar-brand {
+  letter-spacing: -0.01em;
+  color: var(--tt-text);
+}
+.display-5 { font-weight: 700; }
+.lead { color: var(--tt-muted); }
+
+a { color: var(--tt-brand-600); text-decoration: none; }
+a:hover { color: var(--tt-brand-700); text-decoration: underline; }
+
+/* ---- Navbar ---- */
+.navbar.bg-white {
+  background-color: var(--tt-surface) !important;
+  border-bottom: 1px solid var(--tt-border) !important;
+  box-shadow: var(--tt-shadow-sm);
+}
+.tt-navbar { padding-block: .55rem; }
+
+/* Brand mark */
+.tt-brand { display: inline-flex; align-items: center; gap: .55rem; font-weight: 700; }
+.tt-brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: var(--tt-radius-sm);
+  background: var(--tt-brand); color: #fff;
+  box-shadow: var(--tt-shadow-sm);
+}
+.tt-brand-text { color: var(--tt-brand-700); letter-spacing: -0.02em; }
+
+/* Primary links */
+.navbar .nav-link { color: var(--tt-gray-700) !important; font-weight: 500; border-radius: var(--tt-radius-sm); padding-inline: .7rem; transition: color .12s ease, background-color .12s ease; }
+.navbar .nav-link:hover { color: var(--tt-brand-700) !important; background: var(--tt-brand-soft); }
+.tt-primary-nav .nav-link.active,
+.tt-primary-nav .nav-link[aria-current="page"] { color: var(--tt-brand-700) !important; background: var(--tt-brand-soft); }
+
+/* Account avatar + toggle */
+.tt-account-toggle { display: inline-flex; align-items: center; gap: .5rem; padding: .3rem .5rem !important; }
+.tt-account-toggle::after { color: var(--tt-muted); }
+.tt-account-toggle:hover { background: var(--tt-brand-soft); }
+.tt-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 999px;
+  background: var(--tt-brand-soft); color: var(--tt-brand-700);
+  font-size: .78rem; font-weight: 700; letter-spacing: .02em;
+  border: 1px solid var(--tt-brand); flex: 0 0 auto;
+}
+.tt-account-name { color: var(--tt-gray-700); font-weight: 500; }
+
+/* Account dropdown */
+.tt-account-menu {
+  min-width: 15rem; margin-top: .5rem; padding: .4rem;
+  border: 1px solid var(--tt-border); border-radius: var(--tt-radius);
+  box-shadow: var(--tt-shadow-lg); background: var(--tt-surface);
+}
+.tt-account-header { display: flex; flex-direction: column; padding: .5rem .65rem .3rem; }
+.tt-account-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tt-muted); font-weight: 600; }
+.tt-account-email { font-weight: 600; color: var(--tt-text); word-break: break-all; }
+.tt-account-menu .dropdown-item { border-radius: var(--tt-radius-sm); padding: .5rem .65rem; font-weight: 500; color: var(--tt-gray-700); }
+.tt-account-menu .dropdown-item:hover,
+.tt-account-menu .dropdown-item:focus { background: var(--tt-brand-soft); color: var(--tt-brand-700); }
+.tt-account-menu .dropdown-divider { margin: .35rem .25rem; border-color: var(--tt-border); }
+.tt-account-menu .tt-logout { color: #b91c1c; }
+.tt-account-menu .tt-logout:hover { background: #fef2f2; color: #b91c1c; }
+.tt-account-menu form { margin: 0; }
+
+/* ---- Collapsed / mobile navbar (below the sm breakpoint) ---- */
+@media (max-width: 575.98px) {
+  /* Give the collapsed panel breathing room and separate it from the toggler row */
+  .tt-navbar .navbar-collapse { padding-top: .5rem; margin-top: .5rem; border-top: 1px solid var(--tt-border); }
+  .tt-primary-nav .nav-link { padding-block: .55rem; }
+
+  /* Visually divide the account section from the primary links */
+  .tt-navbar .navbar-collapse .navbar-nav + .navbar-nav {
+    margin-top: .5rem; padding-top: .5rem; border-top: 1px solid var(--tt-border);
+  }
+
+  /* Account toggle sits inline in the stacked menu; always show the name here */
+  .tt-account-toggle { justify-content: flex-start; padding-inline: .7rem !important; }
+  .tt-account-name { display: inline !important; }
+
+  /* Render the dropdown inline (not as a floating popover) so it can't overflow
+     the viewport on a phone. Bootstrap keeps it hidden until toggled. */
+  .tt-account-menu {
+    position: static !important; float: none; width: 100%;
+    margin-top: .35rem; border: 0; box-shadow: none;
+    background: var(--tt-brand-soft); padding: .25rem;
+  }
+  .tt-account-menu .tt-account-header { padding-block: .4rem; }
+}
+
+/* ---- Cards ---- */
+.card {
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-radius-lg);
+  box-shadow: var(--tt-shadow);
+  background: var(--tt-surface);
+  overflow: hidden;
+}
+.card-header {
+  background: var(--tt-surface);
+  border-bottom: 1px solid var(--tt-border);
+  font-weight: 600;
+  color: var(--tt-gray-700);
+}
+.list-group-item { border-color: var(--tt-gray-100); padding-block: .8rem; }
+
+/* ---- Buttons ---- */
+.btn { border-radius: var(--tt-radius-sm); font-weight: 500; }
+.btn-primary {
+  background-color: var(--tt-brand);
+  border-color: var(--tt-brand);
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--tt-brand-600);
+  border-color: var(--tt-brand-600);
+}
+
+/* ---- Badges ---- */
+.badge { font-weight: 600; border-radius: 999px; padding: .35em .7em; }
+
+/* ---- Forms ---- */
+.form-control, .form-select {
+  border-radius: var(--tt-radius-sm);
+  border-color: var(--tt-gray-300);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--tt-brand);
+  box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .15);
+}
+
+/* ---- Footer ---- */
+.footer { background: var(--tt-surface); border-top: 1px solid var(--tt-border) !important; color: var(--tt-muted); }

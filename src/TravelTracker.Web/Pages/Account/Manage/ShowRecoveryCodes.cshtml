@@ -1,0 +1,23 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.ShowRecoveryCodesModel
+@{ ViewData["Title"] = "Recovery codes"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-3">Recovery codes</h1>
+
+        <div class="alert alert-warning">
+            Store these codes somewhere safe. Each one signs you in once if you lose your
+            authenticator app. They are shown only now and cannot be retrieved later.
+        </div>
+
+        <div class="row row-cols-2 g-2 mb-3">
+            @foreach (var code in Model.RecoveryCodes)
+            {
+                <div class="col"><kbd class="user-select-all">@code</kbd></div>
+            }
+        </div>
+
+        <a class="btn btn-primary" asp-page="./TwoFactorAuthentication">Done</a>
+    </div>
+</div>

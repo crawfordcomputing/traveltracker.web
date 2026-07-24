@@ -1,0 +1,22 @@
+@page
+@model TravelTracker.Web.Pages.Account.LoginWithRecoveryCodeModel
+@{ ViewData["Title"] = "Recovery code sign-in"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Recovery code sign-in</h1>
+        <p class="text-muted">Enter one of the recovery codes you saved when enabling 2FA. Each code works once.</p>
+
+        <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
+            <div asp-validation-summary="All" class="text-danger mb-2"></div>
+            <div class="mb-3">
+                <label asp-for="Input.RecoveryCode" class="form-label"></label>
+                <input asp-for="Input.RecoveryCode" class="form-control" autocomplete="off" autofocus />
+                <span asp-validation-for="Input.RecoveryCode" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign in</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

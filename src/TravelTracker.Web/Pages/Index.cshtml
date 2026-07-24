@@ -1,0 +1,97 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center mb-4">
+    <h1 class="display-5">Travel Tracker</h1>
+    <p class="lead">Open-source business travel tracker.</p>
+</div>
+
+@if (Model.ShowDashboard)
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0">@(Model.ScopeIsAll ? "All trips" : "Your trips")</h2>
+        <a asp-page="/Trips/Create" class="btn btn-primary btn-sm">New trip</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body">
+                <div class="h3 mb-0">@Model.DraftCount</div><div class="text-muted small">Draft</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body">
+                <div class="h3 mb-0">@Model.PlannedCount</div><div class="text-muted small">Planned</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body">
+                <div class="h3 mb-0">@Model.CompletedCount</div><div class="text-muted small">Completed</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body">
+                <div class="h3 mb-0">@Model.UpcomingCount</div><div class="text-muted small">Upcoming</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Upcoming trips</span>
+            <a asp-page="/Trips/Index" class="small">View all</a>
+        </div>
+        @if (Model.Upcoming.Count == 0)
+        {
+            <div class="card-body text-muted">No upcoming trips. <a asp-page="/Trips/Create">Plan one.</a></div>
+        }
+        else
+        {
+            <ul class="list-group list-group-flush">
+            @foreach (var t in Model.Upcoming)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                        <a asp-page="/Trips/Details" asp-route-id="@t.Id">@t.Purpose</a>
+                        @if (Model.ShowTraveler) { <span class="text-muted small">&middot; @(t.Traveler?.DisplayName ?? "—")</span> }
+                    </span>
+                    <span class="text-muted small">@t.StartDate.ToString("MMM d") &ndash; @t.EndDate.ToString("MMM d, yyyy")</span>
+                </li>
+            }
+            </ul>
+        }
+    </div>
+}
+else
+{
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <p><a asp-page="/Account/Login" class="btn btn-primary">Sign in</a> to plan and track trips.</p>
+        </div>
+    </div>
+}
+
+<div class="row justify-content-center mt-2">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">System status</div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Database provider</span><span class="badge bg-secondary">@Model.DbProvider</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Departments seeded</span><span>@Model.DepartmentCount</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Users seeded</span><span>@Model.UserCount</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Health endpoint</span><span><a href="/healthz">/healthz</a></span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

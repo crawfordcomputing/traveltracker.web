@@ -1,0 +1,64 @@
+@page "{id:int}/{legId:int}"
+@model TravelTracker.Web.Pages.Trips.EditLegModel
+@{ ViewData["Title"] = "Edit leg"; }
+
+<h1 class="h3 mb-1">Edit leg</h1>
+<p class="text-muted">@Model.TripPurpose</p>
+
+<form method="post" asp-route-id="@Model.TripId" class="row g-2" style="max-width: 60rem;">
+    <input type="hidden" asp-for="Input.Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="col-md-4">
+        <label asp-for="Input.City" class="form-label"></label>
+        <input asp-for="Input.City" class="form-control" />
+        <span asp-validation-for="Input.City" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.State" class="form-label"></label>
+        <select asp-for="Input.State" asp-items="Model.States" class="form-select">
+            <option value="">—</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.Country" class="form-label"></label>
+        <select asp-for="Input.Country" asp-items="Model.Countries" class="form-select"></select>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Input.TransportMode" class="form-label"></label>
+        <select asp-for="Input.TransportMode"
+                asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.TransportMode>()"
+                class="form-select"></select>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.ArriveDate" class="form-label"></label>
+        <input asp-for="Input.ArriveDate" class="form-control" />
+        <span asp-validation-for="Input.ArriveDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.DepartDate" class="form-label"></label>
+        <input asp-for="Input.DepartDate" class="form-control" />
+        <span asp-validation-for="Input.DepartDate" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Input.LodgingName" class="form-label"></label>
+        <input asp-for="Input.LodgingName" class="form-control" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.ConfirmationNumber" class="form-label"></label>
+        <input asp-for="Input.ConfirmationNumber" class="form-control" />
+    </div>
+    <div class="col-12">
+        <label asp-for="Input.Notes" class="form-label"></label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="2"></textarea>
+    </div>
+
+    <div class="col-12 mt-3">
+        <button type="submit" class="btn btn-primary">Save leg</button>
+        <a asp-page="Details" asp-route-id="@Model.TripId" class="btn btn-link">Cancel</a>
+    </div>
+</form>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

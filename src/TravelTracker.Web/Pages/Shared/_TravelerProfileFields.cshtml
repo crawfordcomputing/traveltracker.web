@@ -1,0 +1,89 @@
+@model TravelTracker.Web.Models.TravelerProfileInput
+@using TravelTracker.Web.Data.Entities
+@{ var costCenterList = ViewData["CostCenters"] as Microsoft.AspNetCore.Mvc.Rendering.SelectList; }
+
+@* Shared traveler-profile form fields. Rendered with a prefix via
+   <partial name="_TravelerProfileFields" for="Input" /> so field names bind to the
+   host page's bound property (Input / Profile). *@
+
+<h2 class="h5 mt-4">Travel documents</h2>
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="PassportNumber" class="form-label"></label>
+        <input asp-for="PassportNumber" class="form-control" autocomplete="off" />
+        <div class="form-text">Stored encrypted.</div>
+        <span asp-validation-for="PassportNumber" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="PassportExpiry" class="form-label"></label>
+        <input asp-for="PassportExpiry" class="form-control" />
+        <span asp-validation-for="PassportExpiry" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Nationality" class="form-label"></label>
+        <input asp-for="Nationality" class="form-control" placeholder="e.g. United States" />
+        <span asp-validation-for="Nationality" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="KnownTravelerNumber" class="form-label"></label>
+        <input asp-for="KnownTravelerNumber" class="form-control" autocomplete="off" />
+        <div class="form-text">Stored encrypted.</div>
+        <span asp-validation-for="KnownTravelerNumber" class="text-danger"></span>
+    </div>
+</div>
+
+<h2 class="h5 mt-4">Contact &amp; emergency</h2>
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="MobileNumber" class="form-label"></label>
+        <input asp-for="MobileNumber" class="form-control" />
+        <span asp-validation-for="MobileNumber" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="EmergencyContactName" class="form-label"></label>
+        <input asp-for="EmergencyContactName" class="form-control" />
+        <span asp-validation-for="EmergencyContactName" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="EmergencyContactPhone" class="form-label"></label>
+        <input asp-for="EmergencyContactPhone" class="form-control" />
+        <span asp-validation-for="EmergencyContactPhone" class="text-danger"></span>
+    </div>
+</div>
+
+<h2 class="h5 mt-4">Loyalty &amp; preferences</h2>
+<div class="row g-3">
+    <div class="col-md-12">
+        <label asp-for="FrequentFlyerNumbers" class="form-label"></label>
+        <textarea asp-for="FrequentFlyerNumbers" class="form-control" rows="2"
+                  placeholder="e.g. UA 12345678, AA 87654321"></textarea>
+        <span asp-validation-for="FrequentFlyerNumbers" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="SeatPreference" class="form-label"></label>
+        <input asp-for="SeatPreference" class="form-control" placeholder="e.g. Aisle" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="MealPreference" class="form-label"></label>
+        <input asp-for="MealPreference" class="form-control" placeholder="e.g. Vegetarian" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="HotelPreference" class="form-label"></label>
+        <input asp-for="HotelPreference" class="form-control" placeholder="e.g. Non-smoking, high floor" />
+    </div>
+</div>
+
+<h2 class="h5 mt-4">Defaults</h2>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="DefaultCostCenterId" class="form-label"></label>
+        <select asp-for="DefaultCostCenterId" asp-items="costCenterList" class="form-select">
+            <option value="">— none —</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ReimbursementMethod" class="form-label"></label>
+        <select asp-for="ReimbursementMethod"
+                asp-items="Html.GetEnumSelectList<ReimbursementMethod>()" class="form-select"></select>
+    </div>
+</div>

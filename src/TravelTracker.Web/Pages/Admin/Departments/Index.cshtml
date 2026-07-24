@@ -1,0 +1,32 @@
+@page
+@model TravelTracker.Web.Pages.Admin.Departments.IndexModel
+@{ ViewData["Title"] = "Departments"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-3">Departments</h1>
+
+<form method="post" asp-page-handler="Create" class="mb-4">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="input-group">
+        <input asp-for="NewName" class="form-control" placeholder="New department name" />
+        <button type="submit" class="btn btn-primary">Add</button>
+    </div>
+    <span asp-validation-for="NewName" class="text-danger"></span>
+</form>
+
+<ul class="list-group">
+@foreach (var d in Model.Departments)
+{
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        @d.Name
+        <form method="post" asp-page-handler="Delete" asp-route-id="@d.Id"
+              onsubmit="return confirm('Delete @d.Name?');" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+    </li>
+}
+</ul>
+<a asp-page="/Admin/Index" class="btn btn-link mt-3">Back to admin</a>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

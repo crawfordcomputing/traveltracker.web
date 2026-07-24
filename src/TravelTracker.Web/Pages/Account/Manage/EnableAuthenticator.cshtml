@@ -1,0 +1,38 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.EnableAuthenticatorModel
+@{ ViewData["Title"] = "Set up authenticator"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <h1 class="h3 mb-3">Set up authenticator app</h1>
+
+        <ol class="mb-3">
+            <li>Install an authenticator app (Microsoft Authenticator, Google Authenticator, Authy, 1Password&hellip;).</li>
+            <li>Scan the QR code below, or enter the key manually.</li>
+            <li>Enter the 6-digit code the app shows to finish.</li>
+        </ol>
+
+        <div class="text-center mb-3">
+            <img src="@Model.QrCodeDataUri" alt="Authenticator QR code" width="220" height="220" />
+        </div>
+
+        <p class="mb-3">
+            Can&rsquo;t scan? Enter this key manually (Time-based / TOTP):<br />
+            <kbd class="user-select-all">@Model.SharedKey</kbd>
+        </p>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+            <div class="mb-3">
+                <label asp-for="Input.Code" class="form-label"></label>
+                <input asp-for="Input.Code" class="form-control" autocomplete="one-time-code"
+                       inputmode="numeric" placeholder="123456" />
+                <span asp-validation-for="Input.Code" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Verify &amp; enable</button>
+            <a class="btn btn-link" asp-page="./TwoFactorAuthentication">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

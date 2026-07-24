@@ -1,0 +1,294 @@
+@page
+@using TravelTracker.Web.Data.Entities
+@model TravelTracker.Web.Pages.Reports.IndexModel
+@{ ViewData["Title"] = "Reports"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Reports</h1>
+    <span class="badge bg-secondary align-self-center">
+        @(Model.IsOrgWide ? "Organization-wide" : "Your team")
+    </span>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label" for="TravelerId">Traveler</label>
+        <select id="TravelerId" name="TravelerId" asp-items="Model.TravelerFilter" class="form-select">
+            <option value="">— everyone —</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="Status">Status</label>
+        <select id="Status" name="Status" asp-items="Html.GetEnumSelectList<TripStatus>()" class="form-select">
+            <option value="">— any —</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="From">From</label>
+        <input type="date" id="From" name="From" value="@(Model.From?.ToString("yyyy-MM-dd"))" class="form-control" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="To">To</label>
+        <input type="date" id="To" name="To" value="@(Model.To?.ToString("yyyy-MM-dd"))" class="form-control" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Filter</button>
+        <a asp-page="Index" class="btn btn-link">Reset</a>
+    </div>
+</form>
+
+@if (Model.FilterError is not null)
+{
+    <div class="alert alert-warning">@Model.FilterError</div>
+}
+
+@{ var s = Model.Summary; }
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-3">
+        <div class="border rounded p-3 h-100">
+            <div class="text-muted small">Trips</div>
+            <div class="h4 mb-0">@s.TripCount</div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="border rounded p-3 h-100">
+            <div class="text-muted small">Reimbursable expenses</div>
+            <div class="h4 mb-0">@s.ExpenseReimbursable.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="border rounded p-3 h-100">
+            <div class="text-muted small">Mileage</div>
+            <div class="h4 mb-0">@s.MileageAmount.ToString("C")</div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="border rounded p-3 h-100">
+            <div class="text-muted small">Combined cost</div>
+            <div class="h4 mb-0">@s.Combined.ToString("C")</div>
+        </div>
+    </div>
+</div>
+
+@if (s.TripCount == 0)
+{
+    <div class="alert alert-light border">No trips match this filter.</div>
+    return;
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="border rounded p-3 h-100">
+            <h2 class="h6 text-muted">Spend by month</h2>
+            <canvas id="chart-month" height="150" aria-label="Spend by month" role="img"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="border rounded p-3 h-100">
+            <h2 class="h6 text-muted">Spend by category</h2>
+            <canvas id="chart-category" height="150" aria-label="Spend by category" role="img"></canvas>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="border rounded p-3">
+            <h2 class="h6 text-muted">Spend by department</h2>
+            <canvas id="chart-department" height="120" aria-label="Spend by department" role="img"></canvas>
+        </div>
+    </div>
+</div>
+
+<script id="chart-data" type="application/json">@Html.Raw(Model.ChartDataJson)</script>
+
+@{
+    // Non-null route values for the Export links, so each carries the current filter
+    // (asp-all-route-data binds IDictionary<string,string> — omit empty entries).
+    Dictionary<string, string> ExportRoute(string view)
+    {
+        var r = new Dictionary<string, string> { ["view"] = view };
+        if (Model.From is { } f) r["From"] = f.ToString("yyyy-MM-dd");
+        if (Model.To is { } t) r["To"] = t.ToString("yyyy-MM-dd");
+        if (Model.Status is { } st) r["Status"] = st.ToString();
+        if (!string.IsNullOrEmpty(Model.TravelerId)) r["TravelerId"] = Model.TravelerId;
+        return r;
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">By person</h2>
+    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="Export"
+       asp-all-route-data='ExportRoute("person")'>Export CSV</a>
+</div>
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Traveler</th>
+            <th class="text-end">Trips</th>
+            <th class="text-end">Travel days</th>
+            <th class="text-end">Expenses</th>
+            <th class="text-end">Mileage</th>
+            <th class="text-end">Combined</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in s.ByPerson)
+        {
+            <tr>
+                <td>@p.TravelerName</td>
+                <td class="text-end">@p.TripCount</td>
+                <td class="text-end">@p.TravelDays</td>
+                <td class="text-end">@p.ExpenseReimbursable.ToString("C")</td>
+                <td class="text-end">@p.MileageAmount.ToString("C")</td>
+                <td class="text-end fw-semibold">@p.Combined.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <th class="text-end">@s.TripCount</th>
+            <th></th>
+            <th class="text-end">@s.ExpenseReimbursable.ToString("C")</th>
+            <th class="text-end">@s.MileageAmount.ToString("C")</th>
+            <th class="text-end">@s.Combined.ToString("C")</th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">By department</h2>
+    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="Export"
+       asp-all-route-data='ExportRoute("department")'>Export CSV</a>
+</div>
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Department</th>
+            <th class="text-end">Travelers</th>
+            <th class="text-end">Trips</th>
+            <th class="text-end">Expenses</th>
+            <th class="text-end">Mileage</th>
+            <th class="text-end">Combined</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var d in s.ByDepartment)
+        {
+            <tr>
+                <td>@d.DepartmentName</td>
+                <td class="text-end">@d.TravelerCount</td>
+                <td class="text-end">@d.TripCount</td>
+                <td class="text-end">@d.ExpenseReimbursable.ToString("C")</td>
+                <td class="text-end">@d.MileageAmount.ToString("C")</td>
+                <td class="text-end fw-semibold">@d.Combined.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">By category</h2>
+    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="Export"
+       asp-all-route-data='ExportRoute("category")'>Export CSV</a>
+</div>
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th class="text-end">Lines</th>
+            <th class="text-end">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in s.ByCategory)
+        {
+            <tr>
+                <td>@c.Category</td>
+                <td class="text-end">@c.Count</td>
+                <td class="text-end">@c.Total.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h2 class="h5 mb-0">By cost center</h2>
+    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="Export"
+       asp-all-route-data='ExportRoute("costcenter")'>Export CSV</a>
+</div>
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Cost center</th>
+            <th class="text-end">Trips</th>
+            <th class="text-end">Expenses</th>
+            <th class="text-end">Mileage</th>
+            <th class="text-end">Combined</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var cc in s.ByCostCenter)
+        {
+            <tr>
+                <td>@(cc.CostCenter ?? "— unassigned —")</td>
+                <td class="text-end">@cc.TripCount</td>
+                <td class="text-end">@cc.ExpenseReimbursable.ToString("C")</td>
+                <td class="text-end">@cc.MileageAmount.ToString("C")</td>
+                <td class="text-end fw-semibold">@cc.Combined.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            var el = document.getElementById('chart-data');
+            if (!el || typeof Chart === 'undefined') return;
+            var data;
+            try { data = JSON.parse(el.textContent || 'null'); } catch (e) { return; }
+            if (!data) return;
+
+            var money = function (v) {
+                return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+            var palette = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'];
+
+            function bar(id, series) {
+                var c = document.getElementById(id);
+                if (!c || !series || !series.labels.length) return;
+                new Chart(c, {
+                    type: 'bar',
+                    data: { labels: series.labels, datasets: [{ data: series.values, backgroundColor: '#4e79a7' }] },
+                    options: {
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: function (ctx) { return money(ctx.parsed.y); } } }
+                        },
+                        scales: { y: { ticks: { callback: function (v) { return money(v); } } } }
+                    }
+                });
+            }
+
+            function doughnut(id, series) {
+                var c = document.getElementById(id);
+                if (!c || !series || !series.labels.length) return;
+                new Chart(c, {
+                    type: 'doughnut',
+                    data: { labels: series.labels, datasets: [{ data: series.values, backgroundColor: palette }] },
+                    options: {
+                        plugins: {
+                            tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + money(ctx.parsed); } } }
+                        }
+                    }
+                });
+            }
+
+            bar('chart-month', data.month);
+            doughnut('chart-category', data.category);
+            bar('chart-department', data.department);
+        })();
+    </script>
+}

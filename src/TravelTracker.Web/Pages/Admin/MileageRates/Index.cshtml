@@ -1,0 +1,90 @@
+@page
+@model TravelTracker.Web.Pages.Admin.MileageRates.IndexModel
+@{ ViewData["Title"] = "Mileage rates"; }
+
+<h1 class="h3 mb-3">Mileage rates</h1>
+<p class="text-muted">
+    Effective-dated reimbursement rates. A later date for the same jurisdiction / vehicle / unit
+    supersedes older ones. Each mileage entry freezes the rate in effect on its date, so editing
+    this table never changes existing entries.
+</p>
+
+<div class="row">
+<div class="col-lg-7">
+    @if (Model.Rates.Count == 0)
+    {
+        <p class="text-muted">No rates configured.</p>
+    }
+    else
+    {
+        <table class="table table-sm align-middle">
+            <thead><tr>
+                <th>Effective</th><th>Jurisdiction</th><th>Vehicle</th><th>Unit</th>
+                <th class="text-end">Rate</th><th>Notes</th><th></th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in Model.Rates)
+            {
+                <tr>
+                    <td class="text-nowrap">@r.EffectiveDate.ToString("MMM d, yyyy")</td>
+                    <td>@r.Jurisdiction</td>
+                    <td>@r.VehicleType</td>
+                    <td>@r.Unit</td>
+                    <td class="text-end">@r.Rate.ToString("0.000")</td>
+                    <td class="small text-muted">@r.Notes</td>
+                    <td class="text-end">
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id" class="d-inline"
+                              onsubmit="return confirm('Delete this rate? Existing entries keep their frozen amounts.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="col-lg-5">
+    <div class="card"><div class="card-body">
+        <h2 class="h6">Add a rate</h2>
+        <form method="post" asp-page-handler="Create">
+            <div asp-validation-summary="All" class="text-danger mb-2"></div>
+            <div class="mb-2">
+                <label asp-for="Input.EffectiveDate" class="form-label"></label>
+                <input asp-for="Input.EffectiveDate" class="form-control" />
+            </div>
+            <div class="mb-2">
+                <label asp-for="Input.Jurisdiction" class="form-label"></label>
+                <input asp-for="Input.Jurisdiction" class="form-control" />
+            </div>
+            <div class="row">
+                <div class="col-6 mb-2">
+                    <label asp-for="Input.VehicleType" class="form-label"></label>
+                    <select asp-for="Input.VehicleType"
+                            asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.VehicleType>()"
+                            class="form-select"></select>
+                </div>
+                <div class="col-6 mb-2">
+                    <label asp-for="Input.Unit" class="form-label"></label>
+                    <select asp-for="Input.Unit"
+                            asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.DistanceUnit>()"
+                            class="form-select"></select>
+                </div>
+            </div>
+            <div class="mb-2">
+                <label asp-for="Input.Rate" class="form-label"></label>
+                <input asp-for="Input.Rate" class="form-control" type="number" step="0.001" min="0" />
+                <span class="text-muted small">Per unit, e.g. 0.700 = 70¢/mile.</span>
+            </div>
+            <div class="mb-2">
+                <label asp-for="Input.Notes" class="form-label"></label>
+                <input asp-for="Input.Notes" class="form-control" />
+            </div>
+            <button type="submit" class="btn btn-primary">Add rate</button>
+        </form>
+    </div></div>
+</div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

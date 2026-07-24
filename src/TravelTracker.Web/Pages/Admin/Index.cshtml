@@ -1,0 +1,70 @@
+@page
+@model TravelTracker.Web.Pages.Admin.IndexModel
+@{ ViewData["Title"] = "Admin"; }
+
+<h1 class="h3 mb-3">Administration</h1>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Users</h2>
+                <p class="text-muted mb-2">@Model.UserCount user(s)</p>
+                <a asp-page="/Admin/Users/Index" class="btn btn-primary btn-sm">Manage users</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Departments</h2>
+                <p class="text-muted mb-2">@Model.DepartmentCount department(s)</p>
+                <a asp-page="/Admin/Departments/Index" class="btn btn-primary btn-sm">Manage departments</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Invitations</h2>
+                <p class="text-muted mb-2">@Model.PendingInviteCount pending invite(s)</p>
+                <a asp-page="/Admin/Invites/Index" class="btn btn-primary btn-sm">Manage invitations</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Arrangers</h2>
+                <p class="text-muted mb-2">@Model.ArrangerCount arranger(s)</p>
+                <a asp-page="/Admin/Arrangers/Index" class="btn btn-primary btn-sm">Manage arrangers</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Mileage rates</h2>
+                <p class="text-muted mb-2">@Model.MileageRateCount rate(s)</p>
+                <a asp-page="/Admin/MileageRates/Index" class="btn btn-primary btn-sm">Manage mileage rates</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Cost centers</h2>
+                <p class="text-muted mb-2">Charge codes travelers assign trips to.</p>
+                <a asp-page="/Reference/CostCenters/Index" class="btn btn-primary btn-sm">Manage cost centers</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Project codes</h2>
+                <p class="text-muted mb-2">Project/charge codes for trips.</p>
+                <a asp-page="/Reference/ProjectCodes/Index" class="btn btn-primary btn-sm">Manage project codes</a>
+            </div>
+        </div>
+    </div>
+</div>

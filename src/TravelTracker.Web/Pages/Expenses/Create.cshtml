@@ -1,0 +1,137 @@
+@page "{tripId:int}"
+@model TravelTracker.Web.Pages.Expenses.CreateModel
+@{ ViewData["Title"] = "Add expense"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-1">Add expense</h1>
+<div class="text-muted mb-3">@Model.Trip.Purpose</div>
+
+@if (Model.DuplicateMatches.Count > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>Possible duplicate.</strong>
+        This looks like @(Model.DuplicateMatches.Count == 1 ? "an expense" : "expenses")
+        already on this trip:
+        <ul class="mb-1 mt-1">
+            @foreach (var d in Model.DuplicateMatches)
+            {
+                <li>@d.Date.ToString("MMM d, yyyy") · @d.Vendor · @d.BaseAmount.ToString("C")</li>
+            }
+        </ul>
+        Review above, or press <em>Save expense</em> again to keep it anyway.
+    </div>
+}
+
+@if (Model.DraftRestored)
+{
+    <div class="alert alert-secondary py-2 d-flex justify-content-between align-items-center">
+        <span>Restored an unsaved draft.</span>
+        <form method="post" asp-page-handler="DiscardDraft" asp-route-tripId="@Model.Trip.Id" class="m-0">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Discard draft</button>
+        </form>
+    </div>
+}
+
+<form method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    @* Carry the confirm flag once a duplicate has been surfaced so the next submit saves. *@
+    @if (Model.DuplicateMatches.Count > 0)
+    {
+        <input type="hidden" asp-for="ConfirmDuplicate" value="true" />
+    }
+    <div class="mb-3">
+        <label asp-for="Input.Category" class="form-label"></label>
+        <select asp-for="Input.Category"
+                asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.ExpenseCategory>()"
+                class="form-select"></select>
+    </div>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.Date" class="form-label"></label>
+            <input asp-for="Input.Date" class="form-control" />
+            <span asp-validation-for="Input.Date" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.Amount" class="form-label"></label>
+            <div class="input-group">
+                <span class="input-group-text">@Model.BaseCurrency</span>
+                <input asp-for="Input.Amount" class="form-control" type="number" step="0.01" min="0" />
+            </div>
+            <span asp-validation-for="Input.Amount" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Vendor" class="form-label"></label>
+        <input asp-for="Input.Vendor" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Description" class="form-label"></label>
+        <textarea asp-for="Input.Description" class="form-control" rows="2"></textarea>
+    </div>
+
+    @* Attendees + business purpose: substantiation for Meals & Entertainment. Always
+       shown (no-JS), with a helper note about when they matter. *@
+    <div class="mb-3">
+        <label asp-for="Input.Attendees" class="form-label"></label>
+        <input asp-for="Input.Attendees" class="form-control" placeholder="e.g. Jane Doe (client), Bob Lee" />
+        <div class="form-text">Recommended for Meals &amp; Entertainment: who was present.</div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.BusinessPurpose" class="form-label"></label>
+        <input asp-for="Input.BusinessPurpose" class="form-control" placeholder="e.g. Contract renewal discussion" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Receipt" class="form-label">Receipt (PDF or image, optional)</label>
+        <input asp-for="Receipt" class="form-control" type="file"
+               accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" />
+        <span asp-validation-for="Receipt" class="text-danger"></span>
+    </div>
+
+    @if (Model.ReceiptRequired)
+    {
+        <div class="mb-3">
+            <label asp-for="Input.MissingReceiptAffidavit" class="form-label"></label>
+            <textarea asp-for="Input.MissingReceiptAffidavit" class="form-control" rows="2"
+                      placeholder="If no receipt: state why (required by policy under @Model.ReceiptThreshold.ToString("C0"))."></textarea>
+            <div class="form-text">
+                Receipts are required by policy. Under @Model.ReceiptThreshold.ToString("C0") you may
+                attach a receipt or type a justification instead.
+            </div>
+        </div>
+    }
+
+    <div class="form-check mb-3">
+        <input asp-for="Input.IsPersonal" class="form-check-input" />
+        <label asp-for="Input.IsPersonal" class="form-check-label"></label>
+    </div>
+    <button type="submit" class="btn btn-primary">Save expense</button>
+    <a asp-page="/Trips/Details" asp-route-id="@Model.Trip.Id" class="btn btn-link">Cancel</a>
+    <span id="autosave-status" class="text-muted small ms-2" aria-live="polite"></span>
+</form>
+</div></div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @* Progressive enhancement: debounced autosave to the Autosave handler. The form
+       works fully without this — manual Save stays primary. *@
+    <script>
+        (function () {
+            var form = document.querySelector('form[enctype="multipart/form-data"]');
+            if (!form || !window.fetch) return;
+            var status = document.getElementById('autosave-status');
+            var timer = null;
+            function save() {
+                fetch('?handler=Autosave', { method: 'POST', body: new FormData(form) })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (j) { if (status) status.textContent = (j && j.ok) ? 'Draft saved' : ''; })
+                    .catch(function () { if (status) status.textContent = ''; });
+            }
+            form.addEventListener('input', function () {
+                if (status) status.textContent = 'Saving…';
+                clearTimeout(timer);
+                timer = setTimeout(save, 1200);
+            });
+        })();
+    </script>
+}

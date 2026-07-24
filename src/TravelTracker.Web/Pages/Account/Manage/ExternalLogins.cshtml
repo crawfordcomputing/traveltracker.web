@@ -1,0 +1,52 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.ExternalLoginsModel
+@{ ViewData["Title"] = "External logins"; }
+
+<h1 class="h3 mb-3">External logins</h1>
+<p class="text-muted">Link a Microsoft Entra ID account so you can sign in with it instead of a password.</p>
+
+@if (Model.StatusMessage is not null)
+{
+    var isError = Model.StatusMessage.StartsWith("Error", StringComparison.OrdinalIgnoreCase);
+    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+        @Model.StatusMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.CurrentLogins.Count > 0)
+{
+    <h2 class="h5">Linked accounts</h2>
+    <table class="table">
+        <tbody>
+        @foreach (var login in Model.CurrentLogins)
+        {
+            <tr>
+                <td>@login.ProviderDisplayName</td>
+                <td class="text-end">
+                    @if (Model.ShowRemoveButton)
+                    {
+                        <form method="post" asp-page-handler="RemoveLogin" class="d-inline">
+                            <input type="hidden" name="loginProvider" value="@login.LoginProvider" />
+                            <input type="hidden" name="providerKey" value="@login.ProviderKey" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No external logins are linked to your account yet.</p>
+}
+
+@if (Model.EntraIdEnabled && !Model.EntraLinked)
+{
+    <hr />
+    <form method="post" asp-page-handler="LinkLogin">
+        <button type="submit" class="btn btn-outline-secondary">Link Microsoft Entra ID</button>
+    </form>
+}

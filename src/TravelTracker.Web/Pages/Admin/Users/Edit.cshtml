@@ -1,0 +1,54 @@
+@page
+@model TravelTracker.Web.Pages.Admin.Users.EditModel
+@{ ViewData["Title"] = "Edit user"; }
+
+<div class="row"><div class="col-lg-8">
+<h1 class="h3 mb-3">Edit user</h1>
+<p class="text-muted">@Model.Email</p>
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <input type="hidden" asp-for="Input.Id" />
+    <div class="mb-3">
+        <label asp-for="Input.DisplayName" class="form-label"></label>
+        <input asp-for="Input.DisplayName" class="form-control" />
+        <span asp-validation-for="Input.DisplayName" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Role" class="form-label"></label>
+        <select asp-for="Input.Role" asp-items="Model.RoleOptions" class="form-select"></select>
+        <span asp-validation-for="Input.Role" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.DepartmentId" class="form-label"></label>
+        <select asp-for="Input.DepartmentId" asp-items="Model.Departments" class="form-select">
+            <option value="">— none —</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.ApproverId" class="form-label"></label>
+        <select asp-for="Input.ApproverId" asp-items="Model.Approvers" class="form-select">
+            <option value="">— none —</option>
+        </select>
+        <div class="form-text">Who approves this user's trips. Used by the approval workflow (coming in M6); not necessarily the direct manager.</div>
+        <span asp-validation-for="Input.ApproverId" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.BaseLocation" class="form-label"></label>
+        <input asp-for="Input.BaseLocation" class="form-control" placeholder="e.g. Chicago, IL" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.TimeZoneId" class="form-label"></label>
+        <input asp-for="Input.TimeZoneId" class="form-control" placeholder="e.g. America/Chicago" />
+    </div>
+
+    @{ ViewData["CostCenters"] = Model.CostCenterOptions; }
+    <partial name="_TravelerProfileFields" for="Profile" />
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a asp-page="/Admin/Users/Index" class="btn btn-link">Cancel</a>
+    </div>
+</form>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

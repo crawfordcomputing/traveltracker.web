@@ -1,0 +1,71 @@
+@page "{tripId:int}"
+@model TravelTracker.Web.Pages.Mileage.CreateModel
+@{ ViewData["Title"] = "Add mileage"; }
+
+<div class="row"><div class="col-md-7">
+<h1 class="h3 mb-1">Add mileage</h1>
+<div class="text-muted mb-3">@Model.Trip.Purpose</div>
+
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger mb-2"></div>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.Date" class="form-label"></label>
+            <input asp-for="Input.Date" class="form-control" />
+            <span asp-validation-for="Input.Date" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.Distance" class="form-label"></label>
+            <input asp-for="Input.Distance" class="form-control" type="number" step="0.1" min="0" />
+            <span asp-validation-for="Input.Distance" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.Unit" class="form-label"></label>
+            <select asp-for="Input.Unit"
+                    asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.DistanceUnit>()"
+                    class="form-select"></select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.VehicleType" class="form-label"></label>
+            <select asp-for="Input.VehicleType"
+                    asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.VehicleType>()"
+                    class="form-select"></select>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.Jurisdiction" class="form-label"></label>
+            <input asp-for="Input.Jurisdiction" class="form-control" />
+            <span asp-validation-for="Input.Jurisdiction" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Input.CommuteDeduction" class="form-label"></label>
+            <input asp-for="Input.CommuteDeduction" class="form-control" type="number" step="0.1" min="0" />
+            <span asp-validation-for="Input.CommuteDeduction" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="form-check mb-3">
+        <input asp-for="Input.IsRoundTrip" class="form-check-input" />
+        <label asp-for="Input.IsRoundTrip" class="form-check-label"></label>
+        <span class="text-muted small d-block">Doubles the entered distance before the commute deduction.</span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Purpose" class="form-label"></label>
+        <input asp-for="Input.Purpose" class="form-control" placeholder="e.g. Airport → client site → hotel" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Waypoints" class="form-label"></label>
+        <textarea asp-for="Input.Waypoints" class="form-control" rows="3"
+                  placeholder="SFO Airport&#10;Client site — Palo Alto&#10;Hotel — Redwood City"></textarea>
+        <span class="text-muted small">Optional. One stop per line, in order. Supports A→B→C routes.</span>
+    </div>
+    <p class="text-muted small">
+        The reimbursement rate in effect on the mileage date is captured and frozen when you save,
+        so later rate changes never alter this entry.
+    </p>
+    <button type="submit" class="btn btn-primary">Save mileage</button>
+    <a asp-page="/Trips/Details" asp-route-id="@Model.Trip.Id" class="btn btn-link">Cancel</a>
+</form>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

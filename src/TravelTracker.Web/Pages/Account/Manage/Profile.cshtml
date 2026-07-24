@@ -1,0 +1,25 @@
+@page
+@model TravelTracker.Web.Pages.Account.Manage.ProfileModel
+@{ ViewData["Title"] = "My profile"; }
+
+<h1 class="h3 mb-3">My profile</h1>
+<p class="text-muted">Capture your travel details once. Passport and Known Traveler numbers are stored encrypted and used to speed up booking and duty-of-care checks.</p>
+
+@if (Model.StatusMessage is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.StatusMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@{ ViewData["CostCenters"] = Model.CostCenterOptions; }
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <partial name="_TravelerProfileFields" for="Input" />
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save profile</button>
+    </div>
+</form>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

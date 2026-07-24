@@ -1,0 +1,81 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Expenses.SplitModel
+@{ ViewData["Title"] = "Split expense"; }
+
+<div class="row"><div class="col-md-8">
+<h1 class="h3 mb-1">Split expense across categories</h1>
+<div class="text-muted mb-3">
+    @Model.Expense.Vendor · @Model.Expense.Date.ToString("MMM d, yyyy") ·
+    <strong>@Model.Expense.BaseAmount.ToString("C")</strong> total
+</div>
+
+@if (Model.IsReconciled)
+{
+    <div class="alert alert-success py-2">Fully allocated — splits reconcile to the total.</div>
+}
+else
+{
+    <div class="alert alert-warning py-2">
+        @Model.Allocated.ToString("C") of @Model.Expense.BaseAmount.ToString("C") allocated ·
+        <strong>@Model.Remaining.ToString("C")</strong> @(Model.Remaining < 0 ? "over-allocated" : "left to allocate").
+        Until this reconciles, the trip rollup counts the expense under its own category.
+    </div>
+}
+
+@if (Model.Splits.Count > 0)
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Category</th><th>Description</th><th class="text-end">Amount</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var s in Model.Splits)
+        {
+            <tr>
+                <td>@s.Category</td>
+                <td>@s.Description</td>
+                <td class="text-end text-nowrap">@s.BaseAmount.ToString("C")</td>
+                <td class="text-end">
+                    <form method="post" asp-page-handler="Remove" asp-route-id="@Model.Expense.Id"
+                          asp-route-splitId="@s.Id">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <form method="post" asp-page-handler="Clear" asp-route-id="@Model.Expense.Id" class="mb-3">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Clear all splits</button>
+    </form>
+}
+
+<h2 class="h6">Add a split</h2>
+<form method="post" asp-page-handler="Add" asp-route-id="@Model.Expense.Id">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label asp-for="Input.Category" class="form-label"></label>
+            <select asp-for="Input.Category"
+                    asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.ExpenseCategory>()"
+                    class="form-select"></select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.Amount" class="form-label"></label>
+            <input asp-for="Input.Amount" class="form-control" type="number" step="0.01" min="0" />
+            <span asp-validation-for="Input.Amount" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.Description" class="form-label"></label>
+            <input asp-for="Input.Description" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Add</button>
+        </div>
+    </div>
+</form>
+
+<div class="mt-3">
+    <a asp-page="/Trips/Details" asp-route-id="@Model.Expense.TripId" class="btn btn-link">Back to trip</a>
+</div>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

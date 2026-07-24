@@ -1,0 +1,123 @@
+@page "{id:int}"
+@model TravelTracker.Web.Pages.Expenses.EditModel
+@{ ViewData["Title"] = "Edit expense"; }
+
+<div class="row"><div class="col-md-6">
+<h1 class="h3 mb-1">Edit expense</h1>
+<div class="text-muted mb-3">@Model.TripPurpose</div>
+
+@if (Model.DuplicateMatches.Count > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>Possible duplicate.</strong>
+        Another line on this trip matches this amount, date, and vendor:
+        <ul class="mb-1 mt-1">
+            @foreach (var d in Model.DuplicateMatches)
+            {
+                <li>@d.Date.ToString("MMM d, yyyy") · @d.Vendor · @d.BaseAmount.ToString("C")</li>
+            }
+        </ul>
+        Press <em>Save changes</em> again to keep it anyway.
+    </div>
+}
+
+<form method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    @if (Model.DuplicateMatches.Count > 0)
+    {
+        <input type="hidden" asp-for="ConfirmDuplicate" value="true" />
+    }
+    <div class="mb-3">
+        <label asp-for="Input.Category" class="form-label"></label>
+        <select asp-for="Input.Category"
+                asp-items="Html.GetEnumSelectList<TravelTracker.Web.Data.Entities.ExpenseCategory>()"
+                class="form-select"></select>
+    </div>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.Date" class="form-label"></label>
+            <input asp-for="Input.Date" class="form-control" />
+            <span asp-validation-for="Input.Date" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.Amount" class="form-label"></label>
+            <div class="input-group">
+                <span class="input-group-text">@Model.Currency</span>
+                <input asp-for="Input.Amount" class="form-control" type="number" step="0.01" min="0" />
+            </div>
+            <span asp-validation-for="Input.Amount" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Vendor" class="form-label"></label>
+        <input asp-for="Input.Vendor" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.Description" class="form-label"></label>
+        <textarea asp-for="Input.Description" class="form-control" rows="2"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Attendees" class="form-label"></label>
+        <input asp-for="Input.Attendees" class="form-control" placeholder="e.g. Jane Doe (client), Bob Lee" />
+        <div class="form-text">Recommended for Meals &amp; Entertainment: who was present.</div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.BusinessPurpose" class="form-label"></label>
+        <input asp-for="Input.BusinessPurpose" class="form-control" placeholder="e.g. Contract renewal discussion" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Receipt" class="form-label">
+            @(Model.HasReceipt ? "Replace receipt" : "Receipt") (PDF or image, optional)
+        </label>
+        <input asp-for="Receipt" class="form-control" type="file"
+               accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" />
+        <span asp-validation-for="Receipt" class="text-danger"></span>
+        @if (Model.HasReceipt)
+        {
+            <div class="form-text">
+                <a asp-page="Receipt" asp-route-id="@Model.ExpenseId" target="_blank">View current receipt</a>
+            </div>
+            <div class="form-check mt-1">
+                <input asp-for="RemoveReceipt" class="form-check-input" />
+                <label asp-for="RemoveReceipt" class="form-check-label">Remove current receipt</label>
+            </div>
+        }
+    </div>
+
+    @if (Model.ReceiptRequired && !Model.HasReceipt)
+    {
+        <div class="mb-3">
+            <label asp-for="Input.MissingReceiptAffidavit" class="form-label"></label>
+            <textarea asp-for="Input.MissingReceiptAffidavit" class="form-control" rows="2"
+                      placeholder="If no receipt: state why (policy under @Model.ReceiptThreshold.ToString("C0"))."></textarea>
+            <div class="form-text">Receipts are required by policy; type a justification when one is unavailable.</div>
+        </div>
+    }
+
+    <div class="form-check mb-3">
+        <input asp-for="Input.IsPersonal" class="form-check-input" />
+        <label asp-for="Input.IsPersonal" class="form-check-label"></label>
+    </div>
+
+    <div class="row align-items-end">
+        <div class="col-md-6">
+            <div class="form-check mb-3">
+                <input asp-for="Input.Reimbursed" class="form-check-input" />
+                <label asp-for="Input.Reimbursed" class="form-check-label">Reimbursed</label>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label asp-for="Input.ReimbursedDate" class="form-label"></label>
+            <input asp-for="Input.ReimbursedDate" class="form-control" />
+            <span asp-validation-for="Input.Reimbursed" class="text-danger"></span>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save changes</button>
+    <a asp-page="/Trips/Details" asp-route-id="@Model.TripId" class="btn btn-link">Cancel</a>
+</form>
+</div></div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

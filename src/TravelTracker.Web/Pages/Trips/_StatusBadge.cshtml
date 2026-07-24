@@ -1,0 +1,12 @@
+@model TravelTracker.Web.Data.Entities.TripStatus
+@{
+    var css = Model switch
+    {
+        TravelTracker.Web.Data.Entities.TripStatus.Draft => "bg-secondary",
+        TravelTracker.Web.Data.Entities.TripStatus.Planned => "bg-primary",
+        TravelTracker.Web.Data.Entities.TripStatus.Completed => "bg-success",
+        TravelTracker.Web.Data.Entities.TripStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
+<span class="badge @css">@Model</span>
