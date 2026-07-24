@@ -1,0 +1,65 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "Default": ""
+  },
+  "Storage": {
+    "Provider": "LocalDisk",
+    "LocalPath": "App_Data/receipts",
+    "MaxReceiptMb": 10,
+    "Blob": {
+      "ConnectionString": "",
+      "Container": "receipts"
+    }
+  },
+  "Expenses": {
+    "BaseCurrency": "USD",
+    "ReceiptRequired": false,
+    "ReceiptThreshold": 25.00
+  },
+  "Auth": {
+    "EnableEntraId": true,
+    "RequireConfirmedEmail": false,
+    "EntraId": {
+      "Instance": "https://login.microsoftonline.com/",
+      "TenantId": "",
+      "ClientId": "",
+      "ClientSecret": "",
+      "SyncRolesOnLogin": true,
+      "RoleClaimPassthrough": true,
+      "GroupClaimType": "groups",
+      "GroupRoleMappings": []
+    },
+    "Registration": {
+      "Mode": "Domain",
+      "AllowedDomains": ["example.com","gmail.com","greyhelixit.com"]
+    },
+    "Mfa": {
+      "RequireForAdmins": false
+    },
+    "Session": {
+      "IdleTimeoutMinutes": 30,
+      "AbsoluteExpiryHours": 8
+    }
+  },
+  "Email": {
+    "Provider": "Log",
+    "FromAddress": "no-reply@example.com",
+    "Smtp": {
+      "Host": "",
+      "Port": 587,
+      "UseSsl": true,
+      "Username": "",
+      "Password": ""
+    }
+  },
+  "Seed": {
+    "AdminEmail": "admin@example.com"
+  }
+}
