@@ -5,7 +5,10 @@
 
 # dotenv files
 .env
-.appsettings.json
+# Ignore all appsettings files in any subdirectory
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
 
 # User-specific files
 *.rsuser
