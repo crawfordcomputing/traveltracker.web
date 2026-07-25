@@ -76,7 +76,8 @@
                     else
                     {
                         <table class="table table-sm align-middle mb-0">
-                            <thead><tr><th>Traveler</th><th>Email</th><th></th></tr></thead>
+                            <caption class="visually-hidden">Travelers assigned to this arranger</caption>
+                            <thead><tr><th scope="col">Traveler</th><th scope="col">Email</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
                             <tbody>
                             @foreach (var t in Model.Assigned)
                             {

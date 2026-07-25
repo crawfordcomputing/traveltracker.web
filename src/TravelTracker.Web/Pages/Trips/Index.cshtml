@@ -68,14 +68,15 @@
 else
 {
     <table class="table table-striped align-middle">
+        <caption class="visually-hidden">@ViewData["Title"]</caption>
         <thead>
             <tr>
-                <th>Purpose</th>
-                @if (Model.ShowTraveler) { <th>Traveler</th> }
-                <th>Dates</th>
-                <th>Legs</th>
-                <th>Status</th>
-                <th></th>
+                <th scope="col">Purpose</th>
+                @if (Model.ShowTraveler) { <th scope="col">Traveler</th> }
+                <th scope="col">Dates</th>
+                <th scope="col">Legs</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
         </thead>
         <tbody>

@@ -18,9 +18,10 @@
     else
     {
         <table class="table table-sm align-middle">
+            <caption class="visually-hidden">Mileage rates by effective date, jurisdiction, and vehicle</caption>
             <thead><tr>
-                <th>Effective</th><th>Jurisdiction</th><th>Vehicle</th><th>Unit</th>
-                <th class="text-end">Rate</th><th>Notes</th><th></th>
+                <th scope="col">Effective</th><th scope="col">Jurisdiction</th><th scope="col">Vehicle</th><th scope="col">Unit</th>
+                <th scope="col" class="text-end">Rate</th><th scope="col">Notes</th><th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr></thead>
             <tbody>
             @foreach (var r in Model.Rates)

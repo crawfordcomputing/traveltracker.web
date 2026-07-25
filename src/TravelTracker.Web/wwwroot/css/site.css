@@ -12,6 +12,28 @@ html {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
+/* Skip link: hidden until keyboard-focused, then pinned top-left above the nav. */
+.skip-link.visually-hidden-focusable:focus,
+.skip-link.visually-hidden-focusable:focus-within {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1080;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border: 2px solid #258cfb;
+  border-radius: 0.25rem;
+  color: #0a58ca;
+  text-decoration: none;
+}
+
+/* Keyboard-focused <main> should not paint a stray outline (it's a scroll target). */
+#main-content:focus {
+  outline: none;
+}
+
 html {
   position: relative;
   min-height: 100%;

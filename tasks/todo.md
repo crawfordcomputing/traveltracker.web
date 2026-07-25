@@ -96,3 +96,128 @@ Shipped M5 items 1–3 as one unit. Free-text `Trip.CostCenter`/`ProjectCode` an
 
 **Remaining M5 (next, moving down the list):** email on approval decision, empty-states/validation/
 a11y pass, seed/demo toggle, contributing guide + issue templates, OCR receipts, dynamic per diems.
+
+---
+
+# M5 — Empty states, validation, accessibility pass (line 205) — 2026-07-25
+
+## Context
+Line 204 (email on approval decision) skipped: it depends on the M6 approval flow
+(Submitted/Approved/Rejected statuses + approve/reject handler), which is deferred
+and unbuilt. User chose to pick up line 205 instead.
+
+## Audit findings
+- **Empty states:** already present on almost every list (Trips/Index, WhoIsOut,
+  CostCenters, ProjectCodes, home dashboard, Expenses/Split via `Count > 0`). Only
+  gaps: Admin/Users/Index (no guard) and Trips/Calendar (no "no trips" hint).
+- **Validation:** input forms already have validation-summary + asp-validation-for +
+  `_ValidationScriptsPartial`. The POST forms lacking a summary are delete-confirm /
+  single-action posts with no user input — correctly need none. No churn planned.
+- **Accessibility:** the real, systematic gap.
+  - `_Layout` has `lang`, `<main role="main">`, aria on toggler/brand, but **no
+    skip-to-content link** and no `id` on `<main>`.
+  - Data-table `<th>` cells lack `scope="col"` (only CostCenters/ProjectCodes have
+    it), no `<caption>`, and empty action-column headers are unlabeled.
+
+## Plan
+- [ ] 1. `_Layout.cshtml`: `.visually-hidden-focusable` skip link (first body child)
+      → `#main-content`; add `id="main-content"` to `<main>`.
+- [ ] 2. Table a11y across data tables (Trips/Index, WhoIsOut, Admin/Users,
+      Admin/MileageRates, Admin/Invites, Admin/Arrangers, Calendar, Expenses/Split,
+      Reports, Trips/Details): `scope="col"` on headers, visually-hidden `<caption>`,
+      visually-hidden label on empty action `<th>`.
+- [ ] 3. Empty states: Admin/Users/Index `Count==0` guard; Calendar month hint.
+- [ ] 4. Verify: sandbox build (0 warn / 0 err), grep-verify coverage, no validation
+      regressions. List (don't run) tests per deferred-testing rule. Update this file.
+
+## Principles
+Minimal impact, no schema/migration change, no new dependency — pure markup/CSS.
+
+## Review — Empty states / validation / a11y pass (2026-07-25)
+
+Skipped line 204 (email on approval decision): depends on the unbuilt M6 approval
+flow. Did line 205 instead.
+
+**Accessibility (the real gap)**
+- `_Layout.cshtml`: added a Bootstrap `.visually-hidden-focusable` skip link as the
+  first body child, targeting `#main-content` (added `id` + `tabindex="-1"` to
+  `<main>`). Skip-link CSS + a focus-outline reset for `#main-content` added to
+  `site.css`. Benefits every page for keyboard/screen-reader users.
+- Data tables: added `scope="col"` to every column header, a `visually-hidden`
+  `<caption>` naming each table, and `visually-hidden` "Actions" text on the
+  previously-empty action-column headers. Covered Trips/Index, WhoIsOut,
+  Admin/Users, Admin/MileageRates, Admin/Invites, Admin/Arrangers, Calendar,
+  Expenses/Split, Reports (4 tables), Trips/Details (3 tables), plus captions on
+  CostCenters/ProjectCodes (already had scope).
+- Totals rows: `scope="row"` on the "Total"/"Reimbursable"/"Total mileage" row
+  headers; converted empty spacer `<th></th>` cells to `<td>` (an empty `<th>` is
+  a meaningless header).
+
+**Empty states**
+- Admin/Users/Index: added a `Count == 0` colspan row (mirrors the Invites pattern).
+- Trips/Calendar: added a "No trips overlap {month}" hint when the month is empty.
+- Audit confirmed every other list already had an empty state; no other changes.
+
+**Validation**
+- No churn: input forms already carry `validation-summary` +
+  `asp-validation-for` + `_ValidationScriptsPartial`. The POST forms without a
+  summary are delete-confirm / single-action posts (no user input) — correctly
+  need none.
+
+**Verification**
+- No .NET SDK in this sandbox (build/test is the local Windows gate, as in prior
+  milestones). Changes are pure Razor markup + CSS — no code/DI/schema touched.
+- Grep-verified: 0 bare `<th>` remain in the data tables; 12 pages carry captions;
+  skip link + `#main-content` present; `visually-hidden-focusable` exists in the
+  bundled Bootstrap CSS.
+- The large `git diff --stat` is the known CRLF-vs-LF artifact (see lessons.md),
+  not real changes — do not "fix" line endings.
+
+**Should be tested locally (deferred per CLAUDE.md — not run here):**
+- `dotnet build -c Release` → expect 0 warnings / 0 errors (Razor compiles).
+- `dotnet test` → existing suite should stay green (no logic changed).
+- Manual: Tab from page load shows the skip link and it jumps focus to content;
+  a screen reader announces table captions + column headers; Admin/Users and an
+  empty Calendar month show their empty states.
+
+---
+
+# M5 — Seed/demo data toggle + richer demo data (line 206) — 2026-07-25
+
+## Decisions (user-confirmed)
+- **Toggle stays dev-only.** The toggle already existed (`Seed:DevData` in
+  appsettings.Development.json, gated in Program.cs by `#if DEBUG` +
+  `IsDevelopment()`). Keeping it dev-only so demo accounts with the shared
+  `Password123!` never ship in a Release artifact. No gating change.
+- **No receipt files.** `ReceiptPath` is an opaque `IReceiptStorage` key; seeding
+  real files was out of scope. Instead, two over-threshold receipt-less lines carry
+  a `MissingReceiptAffidavit` to exercise that path.
+
+## What changed (`Data/DevSeeder.cs` only)
+Previously expenses + mileage existed on **one** trip (Ethan's completed onsite).
+Added three small idempotent helpers (`TripOf`, `SeedExpensesAsync`,
+`SeedMileageAsync` — each no-ops if the trip already has rows) and seeded:
+- **Evan / Cloud Summit 2026** (Planned, arranger-booked): airfare, lodging,
+  conference registration, Lyft, + a kiosk meal with an affidavit. Flew → no mileage.
+- **Ella / Q3 client visit** (Planned, self): airfare, lodging, a client dinner
+  (attendees + business purpose), a personal in-room line (excluded from
+  reimbursables), airport parking with an affidavit; + round-trip mileage.
+- **Morgan / Leadership offsite** (Planned, self): airfare (already reimbursed →
+  mixed reimbursement state), lodging, a team dinner; + round-trip mileage w/ commute.
+
+Mileage on the two new drives is dated ≥ Jul 1 2026, so it freezes at the **76¢ H2
+2026** rate — distinct from Ethan's 72.5¢ H1 entry, showing the effective-dated
+rate freeze in action.
+
+## Verification
+- Grep-verified brace/paren balance in `DevSeeder.cs`; signatures match existing
+  `MileageMath` / `MileageRateResolver` calls.
+- No test regression risk: integration tests boot with `Seed:DevData=false`
+  (AuthorizationTests, HealthEndpointTests), and `DevSeeder` is `#if DEBUG` only.
+- No SDK in sandbox — build/test remains the local gate.
+
+**Should be tested locally (deferred):**
+- `dotnet build` (Debug) → DevSeeder compiles.
+- Run the app in Development with `Seed:DevData=true` on a fresh DB → confirm
+  4 trips carry expenses, 3 carry mileage, reports/dashboard totals populate, and
+  the two affidavit lines render. Re-run startup → no duplicates (idempotent).

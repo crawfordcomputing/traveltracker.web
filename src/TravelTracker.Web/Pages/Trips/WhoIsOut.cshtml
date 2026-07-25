@@ -28,8 +28,9 @@
 else
 {
     <table class="table table-striped align-middle">
+        <caption class="visually-hidden">Travelers away in the selected window</caption>
         <thead><tr>
-            <th>Traveler</th><th>Base</th><th>Where</th><th>Purpose</th><th>Dates</th><th>Passport</th>
+            <th scope="col">Traveler</th><th scope="col">Base</th><th scope="col">Where</th><th scope="col">Purpose</th><th scope="col">Dates</th><th scope="col">Passport</th>
         </tr></thead>
         <tbody>
         @{ var todayForPassport = Model.WindowStart; }

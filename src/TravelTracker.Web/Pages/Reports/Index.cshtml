@@ -120,14 +120,15 @@
        asp-all-route-data='ExportRoute("person")'>Export CSV</a>
 </div>
 <table class="table table-striped align-middle">
+    <caption class="visually-hidden">Spend by traveler</caption>
     <thead>
         <tr>
-            <th>Traveler</th>
-            <th class="text-end">Trips</th>
-            <th class="text-end">Travel days</th>
-            <th class="text-end">Expenses</th>
-            <th class="text-end">Mileage</th>
-            <th class="text-end">Combined</th>
+            <th scope="col">Traveler</th>
+            <th scope="col" class="text-end">Trips</th>
+            <th scope="col" class="text-end">Travel days</th>
+            <th scope="col" class="text-end">Expenses</th>
+            <th scope="col" class="text-end">Mileage</th>
+            <th scope="col" class="text-end">Combined</th>
         </tr>
     </thead>
     <tbody>
@@ -145,9 +146,9 @@
     </tbody>
     <tfoot>
         <tr>
-            <th>Total</th>
+            <th scope="row">Total</th>
             <th class="text-end">@s.TripCount</th>
-            <th></th>
+            <td></td>
             <th class="text-end">@s.ExpenseReimbursable.ToString("C")</th>
             <th class="text-end">@s.MileageAmount.ToString("C")</th>
             <th class="text-end">@s.Combined.ToString("C")</th>
@@ -161,14 +162,15 @@
        asp-all-route-data='ExportRoute("department")'>Export CSV</a>
 </div>
 <table class="table table-striped align-middle">
+    <caption class="visually-hidden">Spend by department</caption>
     <thead>
         <tr>
-            <th>Department</th>
-            <th class="text-end">Travelers</th>
-            <th class="text-end">Trips</th>
-            <th class="text-end">Expenses</th>
-            <th class="text-end">Mileage</th>
-            <th class="text-end">Combined</th>
+            <th scope="col">Department</th>
+            <th scope="col" class="text-end">Travelers</th>
+            <th scope="col" class="text-end">Trips</th>
+            <th scope="col" class="text-end">Expenses</th>
+            <th scope="col" class="text-end">Mileage</th>
+            <th scope="col" class="text-end">Combined</th>
         </tr>
     </thead>
     <tbody>
@@ -192,11 +194,12 @@
        asp-all-route-data='ExportRoute("category")'>Export CSV</a>
 </div>
 <table class="table table-striped align-middle">
+    <caption class="visually-hidden">Spend by expense category</caption>
     <thead>
         <tr>
-            <th>Category</th>
-            <th class="text-end">Lines</th>
-            <th class="text-end">Total</th>
+            <th scope="col">Category</th>
+            <th scope="col" class="text-end">Lines</th>
+            <th scope="col" class="text-end">Total</th>
         </tr>
     </thead>
     <tbody>
@@ -217,13 +220,14 @@
        asp-all-route-data='ExportRoute("costcenter")'>Export CSV</a>
 </div>
 <table class="table table-striped align-middle">
+    <caption class="visually-hidden">Spend by cost center</caption>
     <thead>
         <tr>
-            <th>Cost center</th>
-            <th class="text-end">Trips</th>
-            <th class="text-end">Expenses</th>
-            <th class="text-end">Mileage</th>
-            <th class="text-end">Combined</th>
+            <th scope="col">Cost center</th>
+            <th scope="col" class="text-end">Trips</th>
+            <th scope="col" class="text-end">Expenses</th>
+            <th scope="col" class="text-end">Mileage</th>
+            <th scope="col" class="text-end">Combined</th>
         </tr>
     </thead>
     <tbody>

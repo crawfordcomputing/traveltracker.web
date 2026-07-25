@@ -198,12 +198,12 @@ _M4d — itinerary .ics export_ **(built 2026-07-20; build + tests green)**
 - [x] `OnGetIcs` handler on `Trips/Details` → `text/calendar` `trip-{id}.ics`, authorized through `TripAccess` via `LoadAuthorizedTripAsync` (out-of-scope trip 404s). "Add to calendar" button in the Details header. Per-trip download only; subscribable per-user feed deferred (token/auth surface)
 
 ### M5 — Polish
-- [ ] Add "Cost Center" to the database and allow admin/finance to manage the cost center
-- [ ] Add "Project Code" to the database, allow admin, finance and managers to to manage the project codes
-- [ ] Change the Project Code and Cost Center fields to drop down selections based on the new database tables. Change the default cost center under the user profile to a drop down too
-- [ ] Email notification on approval decision
-- [ ] Empty states, validation, accessibility pass
-- [ ] Seed/demo data toggle for easy eval
+- [x] Add "Cost Center" to the database and allow admin/finance to manage the cost center
+- [x] Add "Project Code" to the database, allow admin, finance and managers to to manage the project codes
+- [x] Change the Project Code and Cost Center fields to drop down selections based on the new database tables. Change the default cost center under the user profile to a drop down too
+- [ ] Email notification on approval decision (deferred to M6)
+- [x] Empty states, validation, accessibility pass *(a11y-focused: audit found empty states + validation already broad; added skip link, table scope/captions, remaining empty states — 2026-07-25)*
+- [x] Seed/demo data toggle for easy eval *(toggle already existed: `Seed:DevData` + `#if DEBUG` + `IsDevelopment()`; kept dev-only by decision and enriched the demo data — expenses + mileage now span 4 trips incl. affidavit lines — 2026-07-25)*
 - [ ] Contributing guide + issue templates
 - [ ] Use Optical Character Recognition to extract data (date, vendor, amount) directly from photos or PDFs, then automatically pair receipts with matching transactions
 - [ ] Dynamic Per Diems: Configure location-specific daily allowances for meals and incidentals, automatically adjusting thresholds based on the travel destination

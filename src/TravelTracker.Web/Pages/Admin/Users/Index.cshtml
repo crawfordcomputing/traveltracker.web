@@ -35,10 +35,15 @@
 }
 
 <table class="table table-striped align-middle">
+    <caption class="visually-hidden">User accounts</caption>
     <thead>
-        <tr><th>Email</th><th>Display name</th><th>Department</th><th>Approver</th><th>Roles</th><th>Status</th><th></th></tr>
+        <tr><th scope="col">Email</th><th scope="col">Display name</th><th scope="col">Department</th><th scope="col">Approver</th><th scope="col">Roles</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
     </thead>
     <tbody>
+    @if (Model.Users.Count == 0)
+    {
+        <tr><td colspan="7" class="text-muted">No users match.</td></tr>
+    }
     @foreach (var u in Model.Users)
     {
         <tr class="@(u.IsActive ? "" : "text-muted")">

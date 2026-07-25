@@ -358,6 +358,120 @@ public static class DevSeeder
             });
             await db.SaveChangesAsync();
         }
+
+        // --- More expenses & mileage across other trips ----------------------
+        // Spreads receipts (expense lines) and mileage beyond Ethan's onsite so
+        // reports, the dashboard, and the Details rollups have real depth in dev.
+        // Each block is keyed on "this trip has none yet", so it's idempotent and a
+        // user's later edits survive a reseed. No receipt FILES are seeded (those are
+        // opaque storage keys); a couple of over-threshold lines instead carry a
+        // MissingReceiptAffidavit to exercise the receipt-affidavit path.
+        async Task<Trip?> TripOf(string travelerEmail, string purpose)
+        {
+            var travelerId = Id(travelerEmail);
+            return await db.Trips.FirstOrDefaultAsync(t =>
+                t.TravelerId == travelerId && t.Purpose == purpose);
+        }
+
+        async Task SeedExpensesAsync(Trip? trip, params Expense[] lines)
+        {
+            if (trip is null || await db.Expenses.AnyAsync(e => e.TripId == trip.Id))
+                return;
+            db.Expenses.AddRange(lines);
+            await db.SaveChangesAsync();
+        }
+
+        async Task SeedMileageAsync(
+            Trip? trip, string enteredBy, DateOnly date, decimal distance,
+            bool roundTrip, decimal commute, string purpose, params string[] waypoints)
+        {
+            if (trip is null || await db.MileageEntries.AnyAsync(m => m.TripId == trip.Id))
+                return;
+
+            var rateRows = await db.MileageRates.ToListAsync();
+            var resolved = MileageRateResolver.Resolve(
+                rateRows, "US", VehicleType.Car, DistanceUnit.Miles, date);
+            var billable = MileageMath.BillableDistance(distance, roundTrip, commute);
+
+            var entry = new MileageEntry
+            {
+                TripId = trip.Id,
+                Date = date,
+                Distance = distance,
+                Unit = DistanceUnit.Miles,
+                IsRoundTrip = roundTrip,
+                CommuteDeduction = commute,
+                Jurisdiction = "US",
+                VehicleType = VehicleType.Car,
+                RateId = resolved?.Id,
+                Rate = resolved?.Rate ?? 0m,
+                Amount = MileageMath.Amount(billable, resolved?.Rate ?? 0m),
+                Purpose = purpose,
+                CreatedById = enteredBy,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
+            for (var i = 0; i < waypoints.Length; i++)
+                entry.Waypoints.Add(new MileageWaypoint { Sequence = i + 1, Label = waypoints[i] });
+
+            db.MileageEntries.Add(entry);
+            await db.SaveChangesAsync();
+        }
+
+        // Evan — Cloud Summit 2026 (Planned, Las Vegas). Booked & expensed by Alex
+        // (arranger2) on Evan's behalf. Upcoming, so nothing reimbursed yet; one
+        // over-threshold kiosk line has no receipt → affidavit substantiates it.
+        var summit = await TripOf("evan@example.com", "Cloud Summit 2026");
+        var summitEnteredBy = Id("arranger2@example.com");
+        var summitKiosk = NewExpense(summit?.Id ?? 0, ExpenseCategory.Meals, new(2026, 8, 5), "Terminal 3 kiosk", 31.00m, summitEnteredBy);
+        summitKiosk.MissingReceiptAffidavit = "Grab-and-go lunch; kiosk issued no printed receipt.";
+        await SeedExpensesAsync(summit,
+            NewExpense(summit?.Id ?? 0, ExpenseCategory.Airfare, new(2026, 8, 3), "Southwest Airlines", 356.80m, summitEnteredBy),
+            NewExpense(summit?.Id ?? 0, ExpenseCategory.Lodging, new(2026, 8, 3), "Aria Resort", 540.00m, summitEnteredBy),
+            NewExpense(summit?.Id ?? 0, ExpenseCategory.Conference, new(2026, 8, 3), "Cloud Summit registration", 799.00m, summitEnteredBy),
+            NewExpense(summit?.Id ?? 0, ExpenseCategory.GroundTransport, new(2026, 8, 4), "Lyft", 28.90m, summitEnteredBy),
+            summitKiosk);
+
+        // Ella — Q3 client visit (Planned, Austin). Self-booked & self-expensed. Has a
+        // client meal (attendees + business purpose), a personal line excluded from
+        // reimbursables, and an unattended-lot parking line with an affidavit.
+        var clientVisit = await TripOf("ella@example.com", "Q3 client visit — Acme Corp");
+        var ellaId = Id("ella@example.com");
+        var clientDinner = NewExpense(clientVisit?.Id ?? 0, ExpenseCategory.Meals, new(2026, 7, 29), "Uchi", 118.40m, ellaId);
+        clientDinner.Attendees = "Ella Nguyen, Priya Shah (Acme, client)";
+        clientDinner.BusinessPurpose = "Q3 account review dinner";
+        var ellaParking = NewExpense(clientVisit?.Id ?? 0, ExpenseCategory.Parking, new(2026, 7, 28), "Airport economy lot", 27.00m, ellaId);
+        ellaParking.MissingReceiptAffidavit = "Unattended lot; no receipt dispensed at exit.";
+        await SeedExpensesAsync(clientVisit,
+            NewExpense(clientVisit?.Id ?? 0, ExpenseCategory.Airfare, new(2026, 7, 28), "American Airlines", 289.50m, ellaId),
+            NewExpense(clientVisit?.Id ?? 0, ExpenseCategory.Lodging, new(2026, 7, 28), "Hyatt Regency", 318.00m, ellaId),
+            clientDinner,
+            ellaParking,
+            NewExpense(clientVisit?.Id ?? 0, ExpenseCategory.Meals, new(2026, 7, 29), "In-room movie", 17.99m, ellaId, isPersonal: true));
+
+        // Morgan (manager) — Leadership offsite (Planned, Denver). Self-expensed;
+        // airfare already reimbursed to show a mixed reimbursement state on reports.
+        var offsite = await TripOf("manager@example.com", "Leadership offsite");
+        var managerId = Id("manager@example.com");
+        var offsiteAir = NewExpense(offsite?.Id ?? 0, ExpenseCategory.Airfare, new(2026, 8, 12), "United Airlines", 214.60m, managerId);
+        offsiteAir.Reimbursed = true;
+        offsiteAir.ReimbursedDate = new(2026, 8, 20);
+        var offsiteDinner = NewExpense(offsite?.Id ?? 0, ExpenseCategory.Meals, new(2026, 8, 13), "The Palm", 176.20m, managerId);
+        offsiteDinner.Attendees = "Morgan Bailey, Evan Parker, Ethan Brooks";
+        offsiteDinner.BusinessPurpose = "Leadership team working dinner";
+        await SeedExpensesAsync(offsite,
+            offsiteAir,
+            NewExpense(offsite?.Id ?? 0, ExpenseCategory.Lodging, new(2026, 8, 12), "The Brown Palace", 402.00m, managerId),
+            offsiteDinner);
+
+        // Mileage on the self-drive trips (dates ≥ Jul 1 2026 → frozen at the 76¢ H2
+        // rate, distinct from Ethan's 72.5¢ H1 entry). Evan flew, so his trip stays
+        // mileage-free on purpose.
+        await SeedMileageAsync(clientVisit, ellaId, new DateOnly(2026, 7, 28), 34.0m,
+            roundTrip: true, commute: 0m, "Home → Austin-Bergstrom airport",
+            "Home", "AUS Airport");
+        await SeedMileageAsync(offsite, managerId, new DateOnly(2026, 8, 12), 58.0m,
+            roundTrip: true, commute: 15.0m, "Home → offsite venue",
+            "Home", "The Brown Palace, Denver");
     }
 
     private static Expense NewExpense(

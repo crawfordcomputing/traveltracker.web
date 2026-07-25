@@ -25,7 +25,8 @@ else
 @if (Model.Splits.Count > 0)
 {
     <table class="table table-sm align-middle">
-        <thead><tr><th>Category</th><th>Description</th><th class="text-end">Amount</th><th></th></tr></thead>
+        <caption class="visually-hidden">Expense split allocations</caption>
+        <thead><tr><th scope="col">Category</th><th scope="col">Description</th><th scope="col" class="text-end">Amount</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>
         @foreach (var s in Model.Splits)
         {

@@ -10,6 +10,9 @@
 **/appsettings.Development.json
 **/appsettings.Production.json
 
+# ignore tasks
+/tasks/*
+
 # User-specific files
 *.rsuser
 *.suo
