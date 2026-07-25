@@ -39,6 +39,9 @@ jobs:
   build:
     name: Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     # SQL Server for the integration tests. The suite defaults to Windows
     # LocalDB, which does not exist on Linux runners; TT_TEST_SQL (below) points
