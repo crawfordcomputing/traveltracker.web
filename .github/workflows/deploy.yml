@@ -1,23 +1,26 @@
 name: Build & Deploy
 
-# Builds, tests, and deploys the app to Azure App Service using an existing
-# service principal (app registration) authenticated with client ID + secret.
+# Builds, tests, and deploys the app to Azure App Service using an app
+# registration authenticated with OIDC (federated credentials, no secrets).
 #
 # One-time setup:
-#   1. On your existing app registration, create a new client secret
-#      (Certificates & secrets > New client secret) and copy its VALUE.
+#   1. On the app registration, add a federated credential
+#      (Certificates & secrets > Federated credentials > Add):
+#        Scenario:     GitHub Actions deploying Azure resources
+#        Organization: crawfordcomputing
+#        Repository:   traveltracker.web
+#        Entity type:  Environment      <- NOT Branch; the deploy job below
+#        Value:        production          uses `environment: production`
+#      This produces subject
+#        repo:crawfordcomputing/traveltracker.web:environment:production
 #   2. Make sure the app registration has the "Website Contributor" role on the
 #      App Service (or its resource group).
-#   3. In GitHub (Settings > Secrets and variables > Actions):
-#        SECRETS:
+#   3. In GitHub (Settings > Secrets and variables > Actions > Variables):
 #          AZURE_CLIENT_ID         - the app registration's Application (client) ID
-#          AZURE_CLIENT_SECRET     - the client secret value
 #          AZURE_TENANT_ID         - your Entra tenant ID
 #          AZURE_SUBSCRIPTION_ID   - the target subscription ID
-#        VARIABLE:
 #          AZURE_WEBAPP_NAME       - your App Service name
-#   Client secrets expire - rotate by creating a new one and updating
-#   AZURE_CLIENT_SECRET.
+#   Federated credentials do not expire, so there is nothing to rotate.
 
 on:
   push:
@@ -39,9 +42,6 @@ jobs:
   build:
     name: Build & Test
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     # SQL Server for the integration tests. The suite defaults to Windows
     # LocalDB, which does not exist on Linux runners; TT_TEST_SQL (below) points
@@ -117,6 +117,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # id-token: write is required for azure/login OIDC. It is NOT inherited from
+    # the workflow-level permissions block, which only grants contents: read.
+    permissions:
+      id-token: write
+      contents: read
     environment:
       name: production
     steps:
@@ -141,4 +146,5 @@ jobs:
 
       - name: Azure logout
         if: always()
-        run: az logout
+        # Tolerate "no active accounts" so a failed login does not also fail cleanup.
+        run: az logout || true
