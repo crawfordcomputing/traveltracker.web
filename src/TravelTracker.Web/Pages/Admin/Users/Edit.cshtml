@@ -17,6 +17,30 @@
         <label asp-for="Input.Role" class="form-label"></label>
         <select asp-for="Input.Role" asp-items="Model.RoleOptions" class="form-select"></select>
         <span asp-validation-for="Input.Role" class="text-danger"></span>
+        <div class="form-text">
+            <a class="link-secondary" data-bs-toggle="collapse" href="#rolePermissions" role="button"
+               aria-expanded="false" aria-controls="rolePermissions">What can each role do?</a>
+        </div>
+        <div class="collapse mt-2" id="rolePermissions">
+            <div class="card card-body py-2">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-3">Employee</dt>
+                    <dd class="col-sm-9">Manages their own trips, expenses, and mileage. No access to reports or admin.</dd>
+
+                    <dt class="col-sm-3">Arranger</dt>
+                    <dd class="col-sm-9">Everything an Employee can do, plus acts on behalf of assigned travelers and sees a scoped view of their reports.</dd>
+
+                    <dt class="col-sm-3">Manager</dt>
+                    <dd class="col-sm-9">Team oversight: Who's Out, scoped reports for their team, and manages project codes.</dd>
+
+                    <dt class="col-sm-3">Finance</dt>
+                    <dd class="col-sm-9">Org-wide expenses and reports, plus manages cost centers and project codes. No user administration.</dd>
+
+                    <dt class="col-sm-3">Admin</dt>
+                    <dd class="col-sm-9">Full access, including everything above plus user administration and all settings.</dd>
+                </dl>
+            </div>
+        </div>
     </div>
     <div class="mb-3">
         <label asp-for="Input.DepartmentId" class="form-label"></label>
@@ -29,7 +53,7 @@
         <select asp-for="Input.ApproverId" asp-items="Model.Approvers" class="form-select">
             <option value="">— none —</option>
         </select>
-        <div class="form-text">Who approves this user's trips. Used by the approval workflow (coming in M6); not necessarily the direct manager.</div>
+        <div class="form-text">Who approves this user's trips. Used by the approval workflow; not necessarily the direct manager.</div>
         <span asp-validation-for="Input.ApproverId" class="text-danger"></span>
     </div>
     <div class="mb-3">

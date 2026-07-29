@@ -50,4 +50,8 @@ public class Trip
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public List<Destination> Destinations { get; set; } = new();
+
+    // Approval decision history (submit/approve/reject), newest interesting last.
+    // Owned by the trip; see AppDbContext. Empty until the trip is first submitted.
+    public List<Approval> Approvals { get; set; } = new();
 }

@@ -3,6 +3,9 @@
     var css = Model switch
     {
         TravelTracker.Web.Data.Entities.TripStatus.Draft => "bg-secondary",
+        TravelTracker.Web.Data.Entities.TripStatus.Submitted => "bg-warning text-dark",
+        TravelTracker.Web.Data.Entities.TripStatus.Approved => "bg-primary",
+        TravelTracker.Web.Data.Entities.TripStatus.Rejected => "bg-danger",
         TravelTracker.Web.Data.Entities.TripStatus.Planned => "bg-primary",
         TravelTracker.Web.Data.Entities.TripStatus.Completed => "bg-success",
         TravelTracker.Web.Data.Entities.TripStatus.Cancelled => "bg-danger",

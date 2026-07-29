@@ -12,10 +12,26 @@
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TravelTracker.Web.styles.css" asp-append-version="true" />
 </head>
+@inject TravelTracker.Web.Data.ApprovalInbox ApprovalInbox
 @{
     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     string ActiveIf(string page) =>
         string.Equals(currentPage, page, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+
+    // Show the Approvals nav link only to users who approve someone (the
+    // AppUser.ApproverId relationship, not a role); badge the pending count.
+    var isApprover = false;
+    var pendingApprovals = 0;
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        var uid = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (uid is not null)
+        {
+            isApprover = await ApprovalInbox.IsApproverAsync(uid);
+            if (isApprover)
+                pendingApprovals = await ApprovalInbox.PendingCountAsync(uid);
+        }
+    }
 }
 <body>
     <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
@@ -46,6 +62,18 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link @ActiveIf("/Trips/Calendar")" asp-area="" asp-page="/Trips/Calendar">Calendar</a>
+                            </li>
+                        }
+                        @if (isApprover)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @ActiveIf("/Trips/Approvals")" asp-area="" asp-page="/Trips/Approvals">
+                                    Approvals
+                                    @if (pendingApprovals > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@pendingApprovals</span>
+                                    }
+                                </a>
                             </li>
                         }
                         @if (User.IsInRole("Finance") || User.IsInRole("Manager") || User.IsInRole("Arranger") || User.IsInRole("Admin"))

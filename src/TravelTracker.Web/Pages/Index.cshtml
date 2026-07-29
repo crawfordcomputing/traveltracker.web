@@ -17,22 +17,27 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md">
             <div class="card text-center"><div class="card-body">
                 <div class="h3 mb-0">@Model.DraftCount</div><div class="text-muted small">Draft</div>
             </div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md">
             <div class="card text-center"><div class="card-body">
-                <div class="h3 mb-0">@Model.PlannedCount</div><div class="text-muted small">Planned</div>
+                <div class="h3 mb-0">@Model.AwaitingCount</div><div class="text-muted small">Awaiting approval</div>
             </div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md">
+            <div class="card text-center"><div class="card-body">
+                <div class="h3 mb-0">@Model.ApprovedCount</div><div class="text-muted small">Approved</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md">
             <div class="card text-center"><div class="card-body">
                 <div class="h3 mb-0">@Model.CompletedCount</div><div class="text-muted small">Completed</div>
             </div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md">
             <div class="card text-center"><div class="card-body">
                 <div class="h3 mb-0">@Model.UpcomingCount</div><div class="text-muted small">Upcoming</div>
             </div></div>

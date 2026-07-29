@@ -199,16 +199,17 @@ public static class DevSeeder
 
         var trips = new[]
         {
-            // Arranger-booked: Alex (arranger2) books for Evan.
+            // Arranger-booked and submitted for approval: Alex (arranger2) books for
+            // Evan; awaits Evan's approver (Morgan) → shows in Morgan's queue.
             NewTrip(Id("evan@example.com"), Id("arranger2@example.com"),
-                "Cloud Summit 2026", TripStatus.Planned, TripType.Conference,
+                "Cloud Summit 2026", TripStatus.Submitted, TripType.Conference,
                 new(2026, 8, 3), new(2026, 8, 6),
                 Leg("Las Vegas", "Nevada", "United States", new(2026, 8, 3), new(2026, 8, 6),
                     TransportMode.Flight, "Aria Resort", 1)),
 
-            // Self-booked upcoming client visit.
+            // Self-booked, submitted for approval (also awaits Morgan).
             NewTrip(Id("ella@example.com"), Id("ella@example.com"),
-                "Q3 client visit — Acme Corp", TripStatus.Planned, TripType.ClientVisit,
+                "Q3 client visit — Acme Corp", TripStatus.Submitted, TripType.ClientVisit,
                 new(2026, 7, 28), new(2026, 7, 30),
                 Leg("Austin", "Texas", "United States", new(2026, 7, 28), new(2026, 7, 30),
                     TransportMode.Flight, "Hyatt Regency", 1)),
@@ -229,9 +230,10 @@ public static class DevSeeder
                 Leg("Toronto", "Ontario", "Canada", new(2026, 9, 1), new(2026, 9, 3),
                     TransportMode.Flight, "Fairmont Royal York", 1)),
 
-            // Manager's own trip.
+            // Manager's own trip, already approved by Alex (arranger2, Morgan's
+            // approver). Carries a reject→approve history seeded below.
             NewTrip(Id("manager@example.com"), Id("manager@example.com"),
-                "Leadership offsite", TripStatus.Planned, TripType.Internal,
+                "Leadership offsite", TripStatus.Approved, TripType.Internal,
                 new(2026, 8, 12), new(2026, 8, 14),
                 Leg("Denver", "Colorado", "United States", new(2026, 8, 12), new(2026, 8, 14),
                     TransportMode.Flight, "The Brown Palace", 1)),
@@ -462,6 +464,33 @@ public static class DevSeeder
             offsiteAir,
             NewExpense(offsite?.Id ?? 0, ExpenseCategory.Lodging, new(2026, 8, 12), "The Brown Palace", 402.00m, managerId),
             offsiteDinner);
+
+        // --- Approval history ------------------------------------------------
+        // Morgan's offsite (Approved) shows a realistic reject→revise→approve trail:
+        // Alex (Morgan's approver) bounced it once, then approved the revision. Only
+        // seeded when the trip has no approval rows yet, so it survives a reseed.
+        if (offsite is not null && !await db.Approvals.AnyAsync(a => a.TripId == offsite.Id))
+        {
+            var alexId = Id("arranger2@example.com");
+            db.Approvals.AddRange(
+                new Approval
+                {
+                    TripId = offsite.Id,
+                    ApproverId = alexId,
+                    Decision = ApprovalDecision.Rejected,
+                    Comment = "Please add the working-dinner business purpose before I sign off.",
+                    DecidedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                },
+                new Approval
+                {
+                    TripId = offsite.Id,
+                    ApproverId = alexId,
+                    Decision = ApprovalDecision.Approved,
+                    Comment = "Thanks — approved.",
+                    DecidedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                });
+            await db.SaveChangesAsync();
+        }
 
         // Mileage on the self-drive trips (dates ≥ Jul 1 2026 → frozen at the 76¢ H2
         // rate, distinct from Ethan's 72.5¢ H1 entry). Evan flew, so his trip stays

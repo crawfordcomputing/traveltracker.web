@@ -27,7 +27,10 @@ public class IndexModel : PageModel
     // Manager/Arranger with a reachable team) — drives the traveler-name label.
     public bool ShowTraveler { get; private set; }
     public int DraftCount { get; private set; }
-    public int PlannedCount { get; private set; }
+    // Submitted, awaiting an approver's decision.
+    public int AwaitingCount { get; private set; }
+    // Approved (plus legacy Planned) — cleared for travel.
+    public int ApprovedCount { get; private set; }
     public int CompletedCount { get; private set; }
     public int UpcomingCount { get; private set; }
     public List<Trip> Upcoming { get; private set; } = new();
@@ -51,7 +54,9 @@ public class IndexModel : PageModel
 
         var today = DateOnly.FromDateTime(DateTime.Today);
         DraftCount = await q.CountAsync(t => t.Status == TripStatus.Draft);
-        PlannedCount = await q.CountAsync(t => t.Status == TripStatus.Planned);
+        AwaitingCount = await q.CountAsync(t => t.Status == TripStatus.Submitted);
+        ApprovedCount = await q.CountAsync(t =>
+            t.Status == TripStatus.Approved || t.Status == TripStatus.Planned);
         CompletedCount = await q.CountAsync(t => t.Status == TripStatus.Completed);
 
         var upcomingQ = q

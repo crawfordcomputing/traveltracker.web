@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
     public DbSet<ArrangerAssignment> ArrangerAssignments => Set<ArrangerAssignment>();
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<ProjectCode> ProjectCodes => Set<ProjectCode>();
+    public DbSet<Approval> Approvals => Set<Approval>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -226,6 +227,26 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
             e.Property(x => x.Amount).HasPrecision(18, 2);
 
             e.HasIndex(x => x.TripId);
+        });
+
+        builder.Entity<Approval>(e =>
+        {
+            // Approval rows are owned by the trip — deleting a trip removes its
+            // decision history (same ownership model as Destinations/Expenses).
+            e.HasOne(a => a.Trip)
+                .WithMany(t => t.Approvals)
+                .HasForeignKey(a => a.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict on the approver user FK, matching every other AppUser FK:
+            // deleting a user must never cascade away approval history, and Restrict
+            // dodges SQL Server's multiple-cascade-path error.
+            e.HasOne(a => a.Approver)
+                .WithMany()
+                .HasForeignKey(a => a.ApproverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(a => a.TripId);
         });
 
         builder.Entity<ArrangerAssignment>(e =>

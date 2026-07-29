@@ -6,15 +6,31 @@ using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
+using TravelTracker.Web.Services;
 
 namespace TravelTracker.Web.Pages.Trips;
 
 public class DetailsModel : TripPageModel
 {
-    public DetailsModel(AppDbContext db, TeamAccess team) : base(db, team) { }
+    private readonly IEmailSender _email;
+    private readonly ILogger<DetailsModel> _logger;
+
+    public DetailsModel(AppDbContext db, TeamAccess team, IEmailSender email, ILogger<DetailsModel> logger)
+        : base(db, team)
+    {
+        _email = email;
+        _logger = logger;
+    }
 
     public Trip Trip { get; private set; } = default!;
     public IReadOnlyList<TripStatus> NextStates { get; private set; } = Array.Empty<TripStatus>();
+    // The lifecycle moves the traveler (owner/delegate) may drive from here.
+    public IReadOnlyList<TripTransition> TravelerTransitions { get; private set; } = Array.Empty<TripTransition>();
+    // True when the current user is the trip traveler's assigned approver (or an
+    // Admin acting as one) and so may approve/reject a Submitted trip.
+    public bool CanApprove { get; private set; }
+    // Approval decision history, oldest first.
+    public IReadOnlyList<Approval> ApprovalHistory { get; private set; } = Array.Empty<Approval>();
     public IReadOnlyList<Trip> Conflicts { get; private set; } = Array.Empty<Trip>();
 
     public IReadOnlyList<Expense> Expenses { get; private set; } = Array.Empty<Expense>();
@@ -48,14 +64,38 @@ public class DetailsModel : TripPageModel
 
     private async Task<bool> LoadAsync(int id)
     {
-        var trip = await LoadAuthorizedTripAsync(id,
+        Func<IQueryable<Trip>, IQueryable<Trip>> include =
             q => q.Include(t => t.Traveler).ThenInclude(u => u!.Approver)
                   .Include(t => t.Destinations)
                   .Include(t => t.CostCenter)
-                  .Include(t => t.ProjectCode));
+                  .Include(t => t.ProjectCode);
+
+        var trip = await LoadAuthorizedTripAsync(id, include);
+
+        // The traveler's assigned approver may not sit in their management chain
+        // (approver != manager), so the standard access check can miss them. Re-load
+        // and allow if the current user is this trip's approver — they must be able
+        // to open it to approve/reject.
+        if (trip is null)
+        {
+            var candidate = await include(Db.Trips).FirstOrDefaultAsync(t => t.Id == id);
+            var approverId = candidate?.Traveler?.ApproverId;
+            if (candidate is not null && approverId is not null && approverId == CurrentUserId)
+                trip = candidate;
+        }
+
         if (trip is null) return false;
         Trip = trip;
         NextStates = TripStatusRules.NextStates(trip.Status);
+        TravelerTransitions = TripStatusRules.TransitionsFor(trip.Status, TripActor.Traveler);
+        CanApprove = IsApproverOf(trip);
+
+        ApprovalHistory = await Db.Approvals
+            .Include(a => a.Approver)
+            .Where(a => a.TripId == trip.Id)
+            .OrderBy(a => a.DecidedAt)
+            .ThenBy(a => a.Id)
+            .ToListAsync();
 
         var otherTrips = await Db.Trips
             .Where(t => t.TravelerId == trip.TravelerId && t.Id != trip.Id)
@@ -206,11 +246,22 @@ public class DetailsModel : TripPageModel
         return RedirectToPage("Details", new { id });
     }
 
+    // Traveler-driven lifecycle moves (submit/withdraw/revise/complete/cancel/reopen).
+    // Approver decisions (Approved/Rejected) go through OnPostApprove/OnPostReject so
+    // they can be authorized and recorded in the approval history.
     public async Task<IActionResult> OnPostStatusAsync(int id, TripStatus target, string? reason = null)
     {
         if (!await LoadAsync(id)) return NotFound();
 
-        if (!TripStatusRules.CanTransition(Trip.Status, target))
+        // Submit needs an approver check + notification; decisions need approver
+        // auth + a history row. Both have dedicated handlers.
+        if (target is TripStatus.Submitted or TripStatus.Approved or TripStatus.Rejected)
+        {
+            TempData["TripError"] = "Use the approval actions for that change.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        if (!TripStatusRules.CanTransition(Trip.Status, target, TripActor.Traveler))
         {
             TempData["TripError"] = "That status change is not allowed.";
             return RedirectToPage("Details", new { id });
@@ -226,6 +277,116 @@ public class DetailsModel : TripPageModel
         Trip.CancellationReason = target == TripStatus.Cancelled ? reason!.Trim() : null;
         await Db.SaveChangesAsync();
         return RedirectToPage("Details", new { id });
+    }
+
+    // Traveler submits a Draft/Rejected trip to their approver.
+    public async Task<IActionResult> OnPostSubmitAsync(int id)
+    {
+        if (!await LoadAsync(id)) return NotFound();
+
+        if (!TripStatusRules.CanTransition(Trip.Status, TripStatus.Submitted, TripActor.Traveler))
+        {
+            TempData["TripError"] = "This trip can't be submitted from its current status.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        var approver = Trip.Traveler?.Approver;
+        if (approver is null)
+        {
+            TempData["TripError"] =
+                "No approver is assigned to this traveler. Ask an admin to set one before submitting.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        Trip.Status = TripStatus.Submitted;
+        await Db.SaveChangesAsync();
+
+        await TrySendAsync(approver.Email,
+            $"Trip awaiting your approval: {Trip.Purpose}",
+            $"<p>{Trip.Traveler?.DisplayName} submitted a trip for your approval.</p>" +
+            $"<p><strong>{Trip.Purpose}</strong><br>" +
+            $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}</p>" +
+            "<p>Open Travel Tracker to review and approve or reject it.</p>");
+
+        TempData["ExpenseInfo"] = $"Submitted to {approver.DisplayName} for approval.";
+        return RedirectToPage("Details", new { id });
+    }
+
+    public async Task<IActionResult> OnPostApproveAsync(int id, string? comment = null)
+        => await DecideAsync(id, ApprovalDecision.Approved, comment);
+
+    public async Task<IActionResult> OnPostRejectAsync(int id, string? comment = null)
+        => await DecideAsync(id, ApprovalDecision.Rejected, comment);
+
+    // Shared approve/reject path: authorize the approver, enforce the transition,
+    // record an immutable Approval row, then notify the traveler.
+    private async Task<IActionResult> DecideAsync(int id, ApprovalDecision decision, string? comment)
+    {
+        if (!await LoadAsync(id)) return NotFound();
+
+        if (!CanApprove)
+        {
+            TempData["TripError"] = "Only this traveler's approver can decide on this trip.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        var target = decision == ApprovalDecision.Approved ? TripStatus.Approved : TripStatus.Rejected;
+        if (!TripStatusRules.CanTransition(Trip.Status, target, TripActor.Approver))
+        {
+            TempData["TripError"] = "This trip is not awaiting a decision.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
+        if (decision == ApprovalDecision.Rejected && comment is null)
+        {
+            TempData["TripError"] = "A comment is required when rejecting so the traveler knows what to change.";
+            return RedirectToPage("Details", new { id });
+        }
+
+        Db.Approvals.Add(new Approval
+        {
+            TripId = Trip.Id,
+            ApproverId = CurrentUserId!,
+            Decision = decision,
+            Comment = comment,
+            DecidedAt = DateTimeOffset.UtcNow,
+        });
+        Trip.Status = target;
+        await Db.SaveChangesAsync();
+
+        var verb = decision == ApprovalDecision.Approved ? "approved" : "rejected";
+        await TrySendAsync(Trip.Traveler?.Email,
+            $"Your trip was {verb}: {Trip.Purpose}",
+            $"<p>Your trip <strong>{Trip.Purpose}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
+            $"was {verb} by {Trip.Traveler?.Approver?.DisplayName ?? "your approver"}.</p>" +
+            (comment is null ? "" : $"<p>Comment: {comment}</p>"));
+
+        TempData["ExpenseInfo"] = $"Trip {verb}.";
+        return RedirectToPage("Details", new { id });
+    }
+
+    // The current user is the trip traveler's assigned approver, or an Admin acting
+    // as one. Admin override keeps a stuck queue unblockable if an approver leaves.
+    private bool IsApproverOf(Trip trip)
+    {
+        var approverId = trip.Traveler?.ApproverId;
+        return (approverId is not null && approverId == CurrentUserId) || User.IsInRole(Roles.Admin);
+    }
+
+    // Email is best-effort: an approval is already persisted, so a mail outage must
+    // not fail the request. Log and move on.
+    private async Task TrySendAsync(string? recipient, string subject, string htmlBody)
+    {
+        if (string.IsNullOrWhiteSpace(recipient)) return;
+        try
+        {
+            await _email.SendAsync(recipient, subject, htmlBody);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Approval notification email to {Recipient} failed.", recipient);
+        }
     }
 
     // Expands the trip window to contain all its legs (buffer days preserved).

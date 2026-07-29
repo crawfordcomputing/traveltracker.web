@@ -30,6 +30,8 @@ builder.Services.AddAppEmail(builder.Configuration);
 // Receipt file storage: local disk by default, Azure Blob via Storage:Provider.
 builder.Services.AddReceiptStorage(builder.Configuration);
 builder.Services.AddScoped<TeamAccess>();
+// Approver queue (M6): powers the nav badge + the Trips/Approvals page.
+builder.Services.AddScoped<ApprovalInbox>();
 // JIT Entra group->role sync on external login (no-op unless Entra + mappings on).
 builder.Services.AddScoped<EntraRoleSynchronizer>();
 // Field-level encryption for sensitive profile identifiers (passport / KTN).

@@ -1,0 +1,38 @@
+@page
+@model TravelTracker.Web.Pages.Trips.ApprovalsModel
+@{ ViewData["Title"] = "Approvals"; }
+
+<h1 class="h3 mb-3">Approvals</h1>
+<p class="text-muted">Trips submitted to you and awaiting your decision.</p>
+
+@if (Model.Pending.Count == 0)
+{
+    <p class="text-muted">Nothing awaiting your approval right now.</p>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <caption class="visually-hidden">Trips awaiting your approval</caption>
+        <thead><tr>
+            <th scope="col">Traveler</th>
+            <th scope="col">Purpose</th>
+            <th scope="col">Dates</th>
+            <th scope="col">Destinations</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr></thead>
+        <tbody>
+        @foreach (var t in Model.Pending)
+        {
+            <tr>
+                <td>@(t.Traveler?.DisplayName ?? "—")</td>
+                <td>@t.Purpose</td>
+                <td class="text-nowrap">@t.StartDate.ToString("MMM d") &ndash; @t.EndDate.ToString("MMM d, yyyy")</td>
+                <td>@string.Join(", ", t.Destinations.OrderBy(d => d.Sequence).Select(d => d.City))</td>
+                <td class="text-end">
+                    <a asp-page="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">Review</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
