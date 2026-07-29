@@ -83,6 +83,13 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
             .HasForeignKey(u => u.ApproverId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Filtered index over the eval-batch tag: only eval rows are indexed, so
+        // teardown's "delete where EvalBatchId = @batch" is cheap and real-world
+        // queries carry no extra index weight. Mirrored on Trip below.
+        builder.Entity<AppUser>()
+            .HasIndex(u => u.EvalBatchId)
+            .HasFilter("[EvalBatchId] IS NOT NULL");
+
         builder.Entity<Trip>(e =>
         {
             // Restrict on the user FKs: deleting a user should never silently
@@ -115,6 +122,11 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
                 .WithMany()
                 .HasForeignKey(t => t.ProjectCodeId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Filtered index over the eval-batch tag (see AppUser above). Deleting
+            // an eval trip cascades its Destinations/Expenses/Mileage/Approvals.
+            e.HasIndex(t => t.EvalBatchId)
+                .HasFilter("[EvalBatchId] IS NOT NULL");
         });
 
         builder.Entity<Expense>(e =>

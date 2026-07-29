@@ -178,6 +178,9 @@ namespace TravelTracker.Web.Data.Migrations
                     b.Property<string>("EmergencyContactPhone")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("EvalBatchId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("FrequentFlyerNumbers")
                         .HasColumnType("nvarchar(max)");
 
@@ -272,6 +275,9 @@ namespace TravelTracker.Web.Data.Migrations
                     b.HasIndex("DefaultCostCenterId");
 
                     b.HasIndex("DepartmentId");
+
+                    b.HasIndex("EvalBatchId")
+                        .HasFilter("[EvalBatchId] IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -881,6 +887,9 @@ namespace TravelTracker.Web.Data.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("EvalBatchId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -911,6 +920,9 @@ namespace TravelTracker.Web.Data.Migrations
                     b.HasIndex("CostCenterId");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("EvalBatchId")
+                        .HasFilter("[EvalBatchId] IS NOT NULL");
 
                     b.HasIndex("ProjectCodeId");
 

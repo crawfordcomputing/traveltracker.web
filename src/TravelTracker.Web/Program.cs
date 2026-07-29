@@ -67,6 +67,48 @@ app.MapHealthChecks("/healthz");
 // Apply migrations + seed on startup so the DB self-initializes on first run/deploy.
 await DbInitializer.InitializeAsync(app.Services, app.Configuration);
 
+// Evaluation/QA data (production-safe). Unlike the DevSeeder block below, EvalSeeder
+// and EvalTeardown are compiled into every build. They never act on their own: this
+// runs only when Eval:Seed or Eval:Teardown is explicitly set AND a non-empty
+// Eval:BatchId is supplied out-of-band. Teardown wins if both flags are set. Every
+// row EvalSeeder writes is tagged (EvalBatchId) or batch-namespaced, so EvalTeardown
+// removes exactly that batch and nothing else. See Data/EvalSeeder + Data/EvalTeardown.
+{
+    var evalConfig = app.Configuration.GetSection("Eval");
+    var doSeed = evalConfig.GetValue<bool>("Seed");
+    var doTeardown = evalConfig.GetValue<bool>("Teardown");
+    if (doSeed || doTeardown)
+    {
+        var batchId = evalConfig["BatchId"];
+        if (string.IsNullOrWhiteSpace(batchId))
+            throw new InvalidOperationException(
+                "Eval:Seed/Eval:Teardown is set but Eval:BatchId is empty. Refusing to run " +
+                "an eval seed or teardown without an explicit batch id.");
+
+        using var scope = app.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+        var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("EvalData");
+
+        if (doTeardown)
+        {
+            var result = await EvalTeardown.RemoveAsync(db, batchId);
+            logger.LogWarning("Eval teardown for batch {BatchId} removed {Result}.", batchId, result);
+        }
+        else
+        {
+            var domain = evalConfig["EmailDomain"] ?? "eval.traveltracker.test";
+            await EvalSeeder.SeedAsync(
+                db,
+                sp.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<TravelTracker.Web.Data.Entities.AppUser>>(),
+                batchId,
+                domain,
+                evalConfig["Password"]!);
+            logger.LogWarning("Eval seed for batch {BatchId} applied (domain {Domain}).", batchId, domain);
+        }
+    }
+}
+
 #if DEBUG
 // Development-only sample data (departments, users in every role, arranger
 // delegations, trips). Compiled only in Debug builds, so DevSeeder is absent from

@@ -44,6 +44,12 @@ public class Trip
     [StringLength(300)]
     public string? CancellationReason { get; set; }
 
+    // Non-null tags this trip as evaluation/QA data seeded by EvalSeeder under the
+    // given batch id. Null for every real trip. Filtered-indexed so teardown can
+    // delete an eval batch cheaply (a trip delete cascades its whole subtree). See
+    // EvalSeeder / EvalTeardown.
+    public string? EvalBatchId { get; set; }
+
     // Audit trail for "on behalf of" creation.
     public string? CreatedById { get; set; }
     public AppUser? CreatedBy { get; set; }

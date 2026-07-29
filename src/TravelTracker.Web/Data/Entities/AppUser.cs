@@ -28,6 +28,12 @@ public class AppUser : IdentityUser
     public string? ApproverId { get; set; }
     public AppUser? Approver { get; set; }
 
+    // Non-null tags this row as evaluation/QA data seeded by EvalSeeder under the
+    // given batch id. Null for every real user. Filtered-indexed so teardown can
+    // delete an eval batch cheaply and real-world queries are unaffected. See
+    // EvalSeeder / EvalTeardown.
+    public string? EvalBatchId { get; set; }
+
     // True = the account may sign in. Set false to offboard a leaver without
     // deleting history (trip/expense FKs are Restrict, so hard-delete is blocked;
     // deactivation is the intended lifecycle). Enforced in AppSignInManager.

@@ -61,5 +61,12 @@
   },
   "Seed": {
     "AdminEmail": "admin@example.com"
+  },
+  "Eval": {
+    "Seed": false,
+    "Teardown": false,
+    "BatchId": "",
+    "EmailDomain": "eval.traveltracker.test",
+    "Password": ""
   }
 }
