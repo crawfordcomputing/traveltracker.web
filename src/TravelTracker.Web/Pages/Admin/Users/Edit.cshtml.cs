@@ -32,6 +32,7 @@ public class EditModel : PageModel
     public SelectList RoleOptions { get; private set; } = default!;
     public SelectList Approvers { get; private set; } = default!;
     public SelectList CostCenterOptions { get; private set; } = default!;
+    public bool IsSelf { get; private set; }
 
     public class InputModel
     {
@@ -47,6 +48,7 @@ public class EditModel : PageModel
     private async Task LoadLookupsAsync(AppUser user)
     {
         Email = user.Email ?? "";
+        IsSelf = user.Id == _userManager.GetUserId(User);
         Departments = await _db.DepartmentSelectListAsync();
         RoleOptions = ReferenceLists.RoleSelectList();
         Approvers = await _db.ApproverSelectListAsync(excludeUserId: user.Id);
@@ -78,6 +80,13 @@ public class EditModel : PageModel
     {
         var user = await _userManager.FindByIdAsync(Input.Id);
         if (user is null) return NotFound();
+
+        // Separation of duties: a user may never change their own role, so a self-edit
+        // can neither escalate nor demote. Pin the submitted role to the stored role
+        // regardless of what was posted (defends against a forged/tampered field even
+        // though the UI renders it read-only for self).
+        if (user.Id == _userManager.GetUserId(User))
+            Input.Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? Roles.Employee;
 
         if (!Roles.All.Contains(Input.Role))
             ModelState.AddModelError("Input.Role", "Unknown role.");
@@ -133,10 +142,14 @@ public class EditModel : PageModel
         Profile.ApplyTo(user, _protector);
         await _userManager.UpdateAsync(user);
 
-        // Single-role model: replace whatever roles the user currently has.
+        // Single-role model: replace whatever roles the user currently has. Skip the
+        // churn (and security-stamp bump) when the role is unchanged, e.g. a self-edit.
         var existing = await _userManager.GetRolesAsync(user);
-        await _userManager.RemoveFromRolesAsync(user, existing);
-        await _userManager.AddToRoleAsync(user, Input.Role);
+        if (!(existing.Count == 1 && existing[0] == Input.Role))
+        {
+            await _userManager.RemoveFromRolesAsync(user, existing);
+            await _userManager.AddToRoleAsync(user, Input.Role);
+        }
 
         return RedirectToPage("/Admin/Users/Index");
     }

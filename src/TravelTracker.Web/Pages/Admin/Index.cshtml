@@ -53,6 +53,7 @@
         <div class="card">
             <div class="card-body">
                 <h2 class="h5">Cost centers</h2>
+                <p class="text-muted mb-1">@Model.CostCenterCount cost center(s)</p>
                 <p class="text-muted mb-2">Charge codes travelers assign trips to.</p>
                 <a asp-page="/Reference/CostCenters/Index" class="btn btn-primary btn-sm">Manage cost centers</a>
             </div>
@@ -62,6 +63,7 @@
         <div class="card">
             <div class="card-body">
                 <h2 class="h5">Project codes</h2>
+                <p class="text-muted mb-1">@Model.ProjectCodeCount project code(s)</p>
                 <p class="text-muted mb-2">Project/charge codes for trips.</p>
                 <a asp-page="/Reference/ProjectCodes/Index" class="btn btn-primary btn-sm">Manage project codes</a>
             </div>

@@ -7,9 +7,10 @@ namespace TravelTracker.Web.Services;
 
 // Applies the Entra group -> app-role JIT mapping (EntraRoleMapper) to a user's
 // Identity roles at login. Active only when Auth:EnableEntraId=true AND
-// Auth:EntraId:SyncRolesOnLogin=true (default true). With no mappings configured it
-// is a no-op, so simply turning Entra on never disturbs hand-managed roles until an
-// admin actually wires groups to roles.
+// Auth:EntraId:SyncRolesOnLogin=true. Defaults to OFF: the app is the source of
+// truth for roles (Option A), so Entra is an authentication method only and never
+// reconciles roles at login unless an operator explicitly opts in. Even when opted
+// in, with no mappings configured it is a no-op.
 //
 // This is the I/O side of the feature (claims in, Identity roles out); all decision
 // logic lives in the pure EntraRoleMapper so it can be unit-tested without a DB.
@@ -31,7 +32,7 @@ public sealed class EntraRoleSynchronizer
 
     public bool Enabled =>
         _config.GetValue<bool>("Auth:EnableEntraId")
-        && (_config.GetValue<bool?>("Auth:EntraId:SyncRolesOnLogin") ?? true);
+        && (_config.GetValue<bool?>("Auth:EntraId:SyncRolesOnLogin") ?? false);
 
     // Reconcile `user`'s Identity roles against the security groups carried on
     // `principal`. Returns true when any role was added or removed. When something

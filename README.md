@@ -133,6 +133,8 @@ must be supplied out-of-band: user-secrets locally (see [Run locally](#run-local
 and app settings / Key Vault in Azure. The app uses the EF Core SQL Server
 provider everywhere, so only the connection string changes between environments.
 
+> The keys above are the common ones. The app reads more settings than `appsettings.json` shows inline (storage, expenses, auth/Entra ID, registration, sessions, email, seeding). See [Azure App Service settings](#azure-app-service-settings) for the full required/optional reference.
+
 ### Azure SQL (production)
 
 Provide the connection string via an app setting or Key Vault reference:
@@ -175,6 +177,148 @@ Deployment runs from `.github/workflows/deploy.yml` using a service principal
 
 Every push to `main` builds, tests, and deploys. Pull requests build and test
 only. After a deploy, hit `https://<app>.azurewebsites.net/healthz` to confirm.
+
+## Azure App Service settings
+
+App Service holds these under **Settings > Environment variables > App settings**.
+Use the double-underscore form of each key (`Section__Key`), because `:` is not a
+valid character in an environment variable name (e.g. `ConnectionStrings__Default`
+maps to `ConnectionStrings:Default`). Anything here can instead be a
+[Key Vault reference](https://learn.microsoft.com/azure/app-service/app-service-key-vault-references).
+
+### Required
+
+| App setting | What it is |
+|-------------|------------|
+| `ConnectionStrings__Default` | SQL connection string. **Startup fails if it is empty.** Use a managed-identity string (see below) or a Key Vault reference so no password sits in plain app settings. |
+| `Seed__AdminPassword` | Password for the seeded admin account. **Outside Development the app refuses to start until this is set** (the `Admin123!` fallback is dev-only and never reaches production). Only needed until the admin account exists; safe to remove afterward. |
+
+### Required only when a feature is switched on
+
+| App setting(s) | Required when |
+|----------------|---------------|
+| `Auth__EntraId__TenantId`, `Auth__EntraId__ClientId`, `Auth__EntraId__ClientSecret` | `Auth__EnableEntraId=true` (Entra ID SSO). |
+| `Storage__Blob__ConnectionString` | `Storage__Provider=AzureBlob` (receipts in Blob storage). |
+| `Email__Smtp__Host` **and** `Email__FromAddress` (or `Email__Smtp__Username`) | `Email__Provider=Smtp` (real outbound email). |
+
+> **Heads-up:** `appsettings.json` ships `Auth__EnableEntraId=true`. On a fresh
+> deploy that makes the three Entra settings above effectively required. If you are
+> not using SSO yet, set `Auth__EnableEntraId=false`.
+
+### Optional (defaults shown)
+
+**Runtime / seeding**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` | App Service default. Leave as `Production` for real deployments. |
+| `Seed__AdminEmail` | `admin@example.com` | Email for the seeded admin account. |
+
+**Receipt storage**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Storage__Provider` | `LocalDisk` | `LocalDisk` or `AzureBlob`. |
+| `Storage__LocalPath` | `App_Data/receipts` | On Linux App Service use a path under `/home` (e.g. `/home/App_Data/receipts`) so files survive restarts. |
+| `Storage__MaxReceiptMb` | `10` | Max upload size per receipt. |
+| `Storage__Blob__Container` | `receipts` | Blob container name (used when provider is `AzureBlob`). |
+
+**Expenses**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Expenses__BaseCurrency` | `USD` | Currency assigned to new expenses. |
+| `Expenses__ReceiptRequired` | `false` | Require a receipt on expense entry. |
+| `Expenses__ReceiptThreshold` | `25.00` | Amount above which a receipt is required. |
+
+**Auth / Entra ID**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Auth__EnableEntraId` | `true` (as shipped) | Master switch for Entra ID SSO. |
+| `Auth__RequireConfirmedEmail` | `false` | Require a confirmed email before sign-in. |
+| `Auth__EntraId__Instance` | `https://login.microsoftonline.com/` | Authority host. |
+| `Auth__EntraId__SyncRolesOnLogin` | `true` | Sync group-mapped roles on each external login. |
+| `Auth__EntraId__RoleClaimPassthrough` | `true` | Honor role claims sent in the token. |
+| `Auth__EntraId__GroupClaimType` | `groups` | Claim type that carries group IDs. |
+| `Auth__EntraId__GroupRoleMappings__{n}__GroupId` / `__Role` | (none) | Indexed array mapping an Entra group to an app role, e.g. `Auth__EntraId__GroupRoleMappings__0__GroupId` + `Auth__EntraId__GroupRoleMappings__0__Role`. |
+
+**Registration & sessions**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Auth__Registration__Mode` | `Domain` | `Open`, `Domain`, `Invite`, or `Closed`. Unknown/missing fails closed to `Closed`. |
+| `Auth__Registration__AllowedDomains__{n}` | (none) | Indexed array of allowed email domains for `Domain` mode, e.g. `Auth__Registration__AllowedDomains__0=example.com`. |
+| `Auth__Mfa__RequireForAdmins` | `false` | Force TOTP enrollment for Admins. |
+| `Auth__Session__IdleTimeoutMinutes` | `30` | Sliding session idle timeout. |
+| `Auth__Session__AbsoluteExpiryHours` | `8` | Absolute session lifetime. |
+
+**Email (when `Email__Provider=Smtp`)**
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Email__Provider` | `Log` | `Log` writes emails to the log; `Smtp` sends for real. |
+| `Email__FromAddress` | `no-reply@example.com` | Sender address. |
+| `Email__Smtp__Port` | `587` | SMTP port. |
+| `Email__Smtp__UseSsl` | `true` | Use SSL/TLS. |
+| `Email__Smtp__Username` / `Email__Smtp__Password` | (none) | SMTP credentials. |
+
+**Eval / QA data** (production-safe; act only when explicitly set)
+
+| App setting | Default | Notes |
+|-------------|---------|-------|
+| `Eval__Seed` / `Eval__Teardown` | `false` | Seed or remove a tagged QA batch on startup. Requires a non-empty `Eval__BatchId` or startup fails. |
+| `Eval__BatchId` | (none) | Batch tag; teardown removes exactly this batch. |
+| `Eval__EmailDomain` | `eval.traveltracker.test` | Email domain for seeded eval users. |
+| `Eval__Password` | (none) | Password for seeded eval users. |
+
+### Connect to SQL with the App Service managed identity
+
+Managed identity removes the SQL password from your app settings entirely: Azure
+issues the token, so there is nothing to store or rotate. The EF Core SQL Server
+provider (`Microsoft.Data.SqlClient`) supports it through the connection string
+alone, no code change required.
+
+**1. Give the App Service a system-assigned identity and point it at SQL:**
+
+```bash
+az webapp identity assign -g travel-tracker-rg -n <app-name>
+
+az webapp config appsettings set -g travel-tracker-rg -n <app-name> --settings \
+  ConnectionStrings__Default="Server=tcp:<server>.database.windows.net,1433;Database=traveltracker;Authentication=Active Directory Default;Encrypt=True;"
+```
+
+For a **user-assigned** identity instead, use
+`Authentication=Active Directory Managed Identity;User Id=<identity-client-id>;`.
+
+**2. Make yourself the Entra admin on the SQL server** (needed to create the DB
+user in the next step):
+
+```bash
+az sql server ad-admin create -g travel-tracker-rg -s <server> \
+  --display-name "<you@tenant>" --object-id <your-entra-object-id>
+```
+
+**3. Run this against the `traveltracker` database**, connected as that Entra
+admin (portal Query editor, or `sqlcmd -G -S <server>.database.windows.net -d traveltracker`).
+The name in brackets is the identity's display name, which for a system-assigned
+identity equals the App Service resource name:
+
+```sql
+-- Create a contained DB user backed by the App Service managed identity
+CREATE USER [<app-name>] FROM EXTERNAL PROVIDER;
+
+-- Read + write application data
+ALTER ROLE db_datareader ADD MEMBER [<app-name>];
+ALTER ROLE db_datawriter ADD MEMBER [<app-name>];
+
+-- Required: the app applies EF Core migrations on startup (CREATE/ALTER TABLE)
+ALTER ROLE db_ddladmin ADD MEMBER [<app-name>];
+```
+
+> `db_ddladmin` is included because the app self-initializes its schema by running
+> migrations at startup. If you apply migrations out-of-band and want least
+> privilege at runtime, drop `db_ddladmin` and keep only reader/writer.
 
 ## Project layout
 

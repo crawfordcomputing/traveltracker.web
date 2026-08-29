@@ -15,8 +15,19 @@
     </div>
     <div class="mb-3">
         <label asp-for="Input.Role" class="form-label"></label>
-        <select asp-for="Input.Role" asp-items="Model.RoleOptions" class="form-select"></select>
-        <span asp-validation-for="Input.Role" class="text-danger"></span>
+        @if (Model.IsSelf)
+        {
+            <select class="form-select" disabled>
+                <option>@Model.Input.Role</option>
+            </select>
+            <input type="hidden" asp-for="Input.Role" />
+            <div class="form-text text-muted">You can't change your own role. Another administrator has to do it.</div>
+        }
+        else
+        {
+            <select asp-for="Input.Role" asp-items="Model.RoleOptions" class="form-select"></select>
+            <span asp-validation-for="Input.Role" class="text-danger"></span>
+        }
         <div class="form-text">
             <a class="link-secondary" data-bs-toggle="collapse" href="#rolePermissions" role="button"
                aria-expanded="false" aria-controls="rolePermissions">What can each role do?</a>

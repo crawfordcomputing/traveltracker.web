@@ -1,6 +1,7 @@
 // Minimal infra for Travel Tracker.
-// Deploys a Linux App Service on a free/basic plan. Azure SQL is optional
-// (deploySql=true) and mirrors the app's Database:Provider switch.
+// Deploys a Linux App Service on a free/basic plan. The app targets SQL Server
+// only; Azure SQL is provisioned when deploySql=true, otherwise you supply
+// ConnectionStrings__Default yourself (app setting or Key Vault reference).
 //
 // Deploy:
 //   az group create -n travel-tracker-rg -l eastus
@@ -87,13 +88,11 @@ resource web 'Microsoft.Web/sites@2023-12-01' = {
       ftpsState: 'Disabled'
       appSettings: [
         {
-          name: 'Database__Provider'
-          value: deploySql ? 'SqlServer' : 'Sqlite'
-        }
-        {
-          // SQLite default lives in /home/App_Data (persisted across restarts, single instance).
+          // App is SQL Server only. With deploySql=true this points at the provisioned
+          // Azure SQL DB; otherwise set it here (or via a Key Vault reference) before the
+          // app can start. Startup fails fast if it is empty.
           name: 'ConnectionStrings__Default'
-          value: deploySql ? sqlConnectionString : 'Data Source=/home/App_Data/traveltracker.db'
+          value: deploySql ? sqlConnectionString : ''
         }
         {
           name: 'Storage__Provider'

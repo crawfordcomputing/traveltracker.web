@@ -61,6 +61,20 @@ public class AdminUserEditTests
         };
     }
 
+    // Same as NewPage but with an authenticated current user, so EditModel can tell a
+    // self-edit (GetUserId(User)) from an admin editing someone else.
+    private static EditModel NewPageAsUser(
+        IServiceProvider sp, AppDbContext db, UserManager<AppUser> um, string currentUserId)
+    {
+        var page = NewPage(sp, db, um);
+        var identity = new System.Security.Claims.ClaimsIdentity(
+            new[] { new System.Security.Claims.Claim(
+                System.Security.Claims.ClaimTypes.NameIdentifier, currentUserId) },
+            "TestAuth");
+        page.PageContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(identity);
+        return page;
+    }
+
     private static async Task<AppUser> NewUserInRole(
         UserManager<AppUser> um, RoleManager<IdentityRole> rm, string email, string name, string role)
     {
@@ -264,6 +278,77 @@ public class AdminUserEditTests
 
             Assert.IsType<RedirectToPageResult>(await page.OnPostAsync());
             Assert.Null((await um.FindByIdAsync(user.Id))!.ApproverId);
+        });
+    }
+
+    [Fact]
+    public async Task OnPost_Ignores_Attempt_To_Change_Own_Role()
+    {
+        await WithScope(async (sp, db, um, rm) =>
+        {
+            // A second admin so the last-active-admin guard is not what stops the change.
+            await NewUserInRole(um, rm, "other-admin@example.com", "Other Admin", Roles.Admin);
+            var me = await NewUserInRole(um, rm, "me-admin@example.com", "Me Admin", Roles.Admin);
+
+            var page = NewPageAsUser(sp, db, um, me.Id);
+            page.Input = new EditModel.InputModel
+            {
+                Id = me.Id, DisplayName = "Me Admin", Role = Roles.Employee
+            };
+
+            // Role is silently pinned to the stored value, so the edit still succeeds...
+            Assert.IsType<RedirectToPageResult>(await page.OnPostAsync());
+            // ...but the self role change is ignored.
+            var reloaded = await um.FindByIdAsync(me.Id);
+            Assert.True(await um.IsInRoleAsync(reloaded!, Roles.Admin));
+            Assert.False(await um.IsInRoleAsync(reloaded!, Roles.Employee));
+        });
+    }
+
+    [Fact]
+    public async Task OnPost_Allows_Editing_Own_NonRole_Fields()
+    {
+        await WithScope(async (sp, db, um, rm) =>
+        {
+            await NewUserInRole(um, rm, "other-admin2@example.com", "Other Admin2", Roles.Admin);
+            var me = await NewUserInRole(um, rm, "me-admin2@example.com", "Me Admin2", Roles.Admin);
+
+            var page = NewPageAsUser(sp, db, um, me.Id);
+            page.Input = new EditModel.InputModel
+            {
+                Id = me.Id, DisplayName = "Renamed", Role = Roles.Admin, BaseLocation = "Austin, TX"
+            };
+
+            Assert.IsType<RedirectToPageResult>(await page.OnPostAsync());
+            var reloaded = await um.FindByIdAsync(me.Id);
+            Assert.Equal("Renamed", reloaded!.DisplayName);
+            Assert.Equal("Austin, TX", reloaded.BaseLocation);
+            Assert.True(await um.IsInRoleAsync(reloaded, Roles.Admin));
+        });
+    }
+
+    [Fact]
+    public async Task OnGet_Flags_Self_Edit()
+    {
+        await WithScope(async (sp, db, um, rm) =>
+        {
+            var me = await NewUserInRole(um, rm, "self-flag@example.com", "Self Flag", Roles.Admin);
+            var page = NewPageAsUser(sp, db, um, me.Id);
+            Assert.IsType<PageResult>(await page.OnGetAsync(me.Id));
+            Assert.True(page.IsSelf);
+        });
+    }
+
+    [Fact]
+    public async Task OnGet_Not_Self_For_Other_User()
+    {
+        await WithScope(async (sp, db, um, rm) =>
+        {
+            var me = await NewUserInRole(um, rm, "admin-a@example.com", "Admin A", Roles.Admin);
+            var other = await NewUserInRole(um, rm, "user-b@example.com", "User B", Roles.Employee);
+            var page = NewPageAsUser(sp, db, um, me.Id);
+            Assert.IsType<PageResult>(await page.OnGetAsync(other.Id));
+            Assert.False(page.IsSelf);
         });
     }
 

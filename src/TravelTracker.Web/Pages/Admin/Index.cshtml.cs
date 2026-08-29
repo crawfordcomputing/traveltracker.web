@@ -21,6 +21,8 @@ public class IndexModel : PageModel
     public int PendingInviteCount { get; private set; }
     public int ArrangerCount { get; private set; }
     public int MileageRateCount { get; private set; }
+    public int CostCenterCount { get; private set; }
+    public int ProjectCodeCount { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -31,5 +33,7 @@ public class IndexModel : PageModel
             .CountAsync(i => i.AcceptedAt == null && i.ExpiresAt > now);
         ArrangerCount = (await _userManager.GetUsersInRoleAsync(Roles.Arranger)).Count;
         MileageRateCount = await _db.MileageRates.CountAsync();
+        CostCenterCount = await _db.CostCenters.CountAsync();
+        ProjectCodeCount = await _db.ProjectCodes.CountAsync();
     }
 }
