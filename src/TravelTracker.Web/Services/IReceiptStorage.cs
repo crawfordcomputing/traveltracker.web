@@ -3,9 +3,9 @@ namespace TravelTracker.Web.Services;
 // A saved receipt: the opaque storage key plus the content type to serve it with.
 public readonly record struct ReceiptContent(Stream Stream, string ContentType);
 
-// Abstraction over where receipt files live, so the app can run on local disk in
-// dev/eval and Azure Blob in production by flipping Storage:Provider — the same
-// "sensible default, one config switch to production" pattern as the DB provider.
+// Abstraction over where receipt files live. Backed by Azure Blob (the only provider;
+// local disk was removed because App Service wipes wwwroot/App_Data on deploy). Dev/eval
+// use Azurite via Storage:Blob:ConnectionString=UseDevelopmentStorage=true.
 //
 // Keys are opaque, storage-generated strings (never a user-supplied path). Callers
 // persist the key on the Expense and read it back only through this abstraction and

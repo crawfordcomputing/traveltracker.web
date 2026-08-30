@@ -27,7 +27,7 @@ builder.Services.AddRazorPages(options =>
 builder.Services.AddAppDatabase(builder.Configuration);
 builder.Services.AddAppIdentity(builder.Configuration);
 builder.Services.AddAppEmail(builder.Configuration);
-// Receipt file storage: local disk by default, Azure Blob via Storage:Provider.
+// Receipt file storage: Azure Blob only (durable across deploys; App Service wipes wwwroot).
 builder.Services.AddReceiptStorage(builder.Configuration);
 builder.Services.AddScoped<TeamAccess>();
 // Approver queue (M6): powers the nav badge + the Trips/Approvals page.

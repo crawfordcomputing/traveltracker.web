@@ -1,7 +1,7 @@
 namespace TravelTracker.Web.Domain;
 
 // How new local accounts may be created. Mirrors the "sensible default, one config
-// switch" pattern used for Storage:Provider and Auth:EnableEntraId.
+// switch" pattern used for Auth:EnableEntraId.
 //   Open   - anyone may self-register (demo/eval; set in Development only)
 //   Domain - self-register allowed only for an approved email domain
 //   Invite - no self-serve; an admin issues an invite token per user

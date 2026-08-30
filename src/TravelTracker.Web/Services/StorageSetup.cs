@@ -1,27 +1,17 @@
 namespace TravelTracker.Web.Services;
 
-// Provider switch for receipt storage: local disk by default (frictionless dev/eval),
-// Azure Blob when Storage:Provider=AzureBlob. Same "sensible default, one config
-// switch to production" pattern as EmailSetup and the DB provider.
+// Receipt storage is Azure Blob, always. Local disk was removed: on Azure App
+// Service, wwwroot/App_Data is wiped on every deploy, so receipts saved there
+// silently disappeared. Blob is durable across deploys and scales out, and is now
+// the single supported provider.
+//
+// Dev/eval run against Azurite via Storage:Blob:ConnectionString=UseDevelopmentStorage=true.
 public static class StorageSetup
 {
     public static IServiceCollection AddReceiptStorage(
         this IServiceCollection services, IConfiguration config)
     {
-        var provider = config["Storage:Provider"] ?? "LocalDisk";
-
-        switch (provider.ToLowerInvariant())
-        {
-            case "azureblob":
-                services.AddSingleton<IReceiptStorage, AzureBlobReceiptStorage>();
-                break;
-
-            case "localdisk":
-            default:
-                services.AddSingleton<IReceiptStorage, LocalDiskReceiptStorage>();
-                break;
-        }
-
+        services.AddSingleton<IReceiptStorage, AzureBlobReceiptStorage>();
         return services;
     }
 }

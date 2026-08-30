@@ -4,10 +4,15 @@ using Azure.Storage.Blobs.Models;
 
 namespace TravelTracker.Web.Services;
 
-// Production receipt storage: one blob per receipt in a private container.
-// Selected via Storage:Provider=AzureBlob. Config:
-//   Storage:Blob:ConnectionString  (or a managed-identity account URL — see below)
+// Receipt storage: one blob per receipt in a private container. The only provider
+// (local disk was removed as too fragile on App Service). Config:
+//   Storage:Blob:ConnectionString  (UseDevelopmentStorage=true for Azurite in dev)
 //   Storage:Blob:Container         (default "receipts")
+//
+// Keys are date-partitioned by UPLOAD time: {yyyy}/{MM}/{guid}{ext}. Partitioning on
+// upload time (not the editable Expense.Date) keeps a key immutable once written, so
+// editing an expense never orphans a file. Blob has no real folders; the '/' just
+// makes prefix listing (by month) and lifecycle/retention rules cheap.
 //
 // The container is created if missing and is PRIVATE (no public access); receipts
 // are streamed only through the authorized Receipt handler, never a public URL.
@@ -22,7 +27,7 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
 
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException(
-                "Storage:Blob:ConnectionString is required when Storage:Provider=AzureBlob.");
+                "Storage:Blob:ConnectionString is required. Use UseDevelopmentStorage=true for Azurite in dev.");
 
         _container = new BlobContainerClient(connectionString, containerName);
         _container.CreateIfNotExists(PublicAccessType.None);
@@ -35,7 +40,11 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
         if (string.IsNullOrEmpty(ext) || !ReceiptContentTypes.IsAllowedExtension(ext))
             ext = string.Empty;
 
-        var key = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+        // Date-partitioned, opaque, collision-free key. UTC upload time so the prefix
+        // is stable and independent of the user's editable expense date.
+        var now = DateTimeOffset.UtcNow;
+        var key = $"{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+
         var blob = _container.GetBlobClient(key);
         await blob.UploadAsync(
             content,
