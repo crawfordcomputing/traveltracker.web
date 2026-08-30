@@ -25,6 +25,29 @@ public static class TripStatusRules
     private static TripStatus Canonical(TripStatus s) =>
         s == TripStatus.Planned ? TripStatus.Approved : s;
 
+    // Advisory (NON-BLOCKING) notice for the cost-entry pages (Expenses/Mileage
+    // Create). Returns null when the trip is "cleared for costs" — Approved or
+    // Completed, and legacy Planned via Canonical — so no banner shows. For every
+    // other status it returns a short, status-specific nudge. Saving is NEVER
+    // prevented; this mirrors the app's existing advisory signals (over-guideline
+    // badge, duplicate check). See ADR-0002.
+    public static string? CostEntryWarning(TripStatus status) => Canonical(status) switch
+    {
+        TripStatus.Approved or TripStatus.Completed => null,
+        TripStatus.Submitted => "This trip is still awaiting approval. Adding costs now is fine "
+            + "and expected. Prebooked travel (flights, hotels), other pre-trip expenses, and "
+            + "spend that piles up while approval is slow all belong here. They'll simply sit "
+            + "against the trip until it's approved.",
+        TripStatus.Rejected => "This trip was rejected. Consider revising and resubmitting "
+            + "before logging costs against it.",
+        TripStatus.Cancelled => "This trip is cancelled. Costs added here won't belong to an "
+            + "active trip.",
+        _ => "This trip hasn't been approved yet. Adding costs now is fine and expected. "
+            + "Prebooked travel (flights, hotels), other pre-trip expenses, and spend incurred "
+            + "while waiting on a slow approval all belong here. The trip should still be "
+            + "submitted and approved when you can.", // Draft
+    };
+
     private static readonly Dictionary<TripStatus, TripTransition[]> Allowed = new()
     {
         [TripStatus.Draft] = new[]

@@ -2,40 +2,43 @@ using TravelTracker.Web.Data.Entities;
 
 namespace TravelTracker.Web.Domain;
 
-// MINIMAL, ADVISORY per-category spend flag for M3a's "simple policy-limit
-// flagging." A tiny built-in threshold table (base currency) drives an over-limit
-// badge on the trip's expense list. It NEVER blocks submission.
+// ADVISORY per-category spend flag. The per-category soft caps now come from the
+// configurable ExpensePolicy table (managed under /Admin/ExpensePolicies), not a
+// hardcoded dictionary. See ADR-0003.
 //
-// This is deliberately a placeholder. M3d replaces it with the configurable
-// ExpensePolicy table (per-category thresholds, receipt-required, itemization
-// rules, submission blocking). Keep the shape small so swapping it out is cheap.
+// This stays a PURE helper: callers load the caps once and pass them in, matching
+// the app's "domain logic is static + pure, pages load the data" convention. It
+// NEVER blocks entry or submission — it only drives the over-guideline badge.
 public static class ExpensePolicyCheck
 {
-    // Per-line soft caps in base currency. Categories absent here are unlimited.
-    private static readonly Dictionary<ExpenseCategory, decimal> DefaultCaps =
-        new()
-        {
-            [ExpenseCategory.Meals] = 75m,
-            [ExpenseCategory.Lodging] = 350m,
-            [ExpenseCategory.Entertainment] = 150m,
-            [ExpenseCategory.GroundTransport] = 100m,
-        };
+    // Builds the (category -> cap) lookup this helper expects from ExpensePolicy
+    // rows. Categories with no row are absent, i.e. uncapped.
+    public static IReadOnlyDictionary<ExpenseCategory, decimal> CapsFrom(
+        IEnumerable<ExpensePolicy> policies) =>
+        policies.ToDictionary(p => p.Category, p => p.CapAmount);
+
+    // Shared empty lookup for callers that have no policies configured.
+    public static readonly IReadOnlyDictionary<ExpenseCategory, decimal> NoCaps =
+        new Dictionary<ExpenseCategory, decimal>();
 
     // The soft cap for a category, or null when none applies.
-    public static decimal? CapFor(ExpenseCategory category) =>
-        DefaultCaps.TryGetValue(category, out var cap) ? cap : null;
+    public static decimal? CapFor(
+        ExpenseCategory category, IReadOnlyDictionary<ExpenseCategory, decimal> caps) =>
+        caps.TryGetValue(category, out var cap) ? cap : null;
 
     // True when the line's frozen BaseAmount exceeds its category cap. Advisory only.
-    public static bool IsOverCap(Expense expense)
+    public static bool IsOverCap(
+        Expense expense, IReadOnlyDictionary<ExpenseCategory, decimal> caps)
     {
-        var cap = CapFor(expense.Category);
+        var cap = CapFor(expense.Category, caps);
         return cap is not null && expense.BaseAmount > cap.Value;
     }
 
     // A short advisory message, or null when within policy / uncapped.
-    public static string? Flag(Expense expense)
+    public static string? Flag(
+        Expense expense, IReadOnlyDictionary<ExpenseCategory, decimal> caps)
     {
-        var cap = CapFor(expense.Category);
+        var cap = CapFor(expense.Category, caps);
         if (cap is null || expense.BaseAmount <= cap.Value) return null;
         return $"Over the {expense.Category} guideline of {cap.Value:C0}";
     }

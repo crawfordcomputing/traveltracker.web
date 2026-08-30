@@ -262,7 +262,7 @@ else
         <tbody>
         @foreach (var e in Model.Expenses)
         {
-            var flag = TravelTracker.Web.Domain.ExpensePolicyCheck.Flag(e);
+            var flag = TravelTracker.Web.Domain.ExpensePolicyCheck.Flag(e, Model.Caps);
             var splitReconciled = e.Splits.Count > 0
                 && TravelTracker.Web.Domain.ExpenseSplitMath.Reconciles(e.BaseAmount, e.Splits.Select(s => s.BaseAmount));
             <tr>

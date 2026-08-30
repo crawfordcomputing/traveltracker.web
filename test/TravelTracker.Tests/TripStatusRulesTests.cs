@@ -67,4 +67,22 @@ public class TripStatusRulesTests
         Assert.Contains(approver, t => t.To == TripStatus.Approved);
         Assert.Contains(approver, t => t.To == TripStatus.Rejected);
     }
+
+    [Theory]
+    // Cost entry is "cleared" (no warning) only for Approved/Completed and legacy Planned.
+    [InlineData(TripStatus.Approved)]
+    [InlineData(TripStatus.Completed)]
+    [InlineData(TripStatus.Planned)]
+    public void CostEntryWarning_Is_Null_When_Cleared(TripStatus status)
+        => Assert.Null(TripStatusRules.CostEntryWarning(status));
+
+    [Theory]
+    // Every not-yet-approved state gets a non-empty advisory (never blocks, just warns).
+    [InlineData(TripStatus.Draft)]
+    [InlineData(TripStatus.Submitted)]
+    [InlineData(TripStatus.Rejected)]
+    [InlineData(TripStatus.Cancelled)]
+    public void CostEntryWarning_Is_Present_When_Not_Approved(TripStatus status)
+        => Assert.False(string.IsNullOrWhiteSpace(TripStatusRules.CostEntryWarning(status)));
+
 }

@@ -22,6 +22,10 @@ public class CreateModel : ExpensePageModel
 
     public Trip Trip { get; private set; } = default!;
 
+    // Advisory soft-warning shown when costs are added to a not-yet-approved trip
+    // (null once Approved/Completed). Never blocks saving. See ADR-0002.
+    public string? CostWarning => TripStatusRules.CostEntryWarning(Trip.Status);
+
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty] public IFormFile? Receipt { get; set; }
     // Set true when the user chooses to save past a duplicate warning (advisory,

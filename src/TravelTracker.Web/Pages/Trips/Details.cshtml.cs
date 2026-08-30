@@ -36,6 +36,11 @@ public class DetailsModel : TripPageModel
     public IReadOnlyList<Expense> Expenses { get; private set; } = Array.Empty<Expense>();
     public ExpenseRollupResult Rollup { get; private set; } = ExpenseRollupResult.Empty;
 
+    // Configurable per-category guideline caps for the over-guideline badge. Loaded
+    // once per request and handed to ExpensePolicyCheck in the view. See ADR-0003.
+    public IReadOnlyDictionary<TravelTracker.Web.Data.Entities.ExpenseCategory, decimal> Caps { get; private set; }
+        = ExpensePolicyCheck.NoCaps;
+
     public IReadOnlyList<MileageEntry> MileageEntries { get; private set; } = Array.Empty<MileageEntry>();
     public MileageRollupResult MileageTotals { get; private set; } = MileageRollupResult.Empty;
 
@@ -112,6 +117,7 @@ public class DetailsModel : TripPageModel
             .ThenByDescending(e => e.Id)
             .ToListAsync();
         Rollup = ExpenseRollup.Summarize(Expenses);
+        Caps = ExpensePolicyCheck.CapsFrom(await Db.ExpensePolicies.ToListAsync());
 
         MileageEntries = await Db.MileageEntries
             .Include(m => m.Waypoints)

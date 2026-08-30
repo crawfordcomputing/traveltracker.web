@@ -23,6 +23,7 @@ public class IndexModel : PageModel
     public int MileageRateCount { get; private set; }
     public int CostCenterCount { get; private set; }
     public int ProjectCodeCount { get; private set; }
+    public int ExpensePolicyCount { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -35,5 +36,6 @@ public class IndexModel : PageModel
         MileageRateCount = await _db.MileageRates.CountAsync();
         CostCenterCount = await _db.CostCenters.CountAsync();
         ProjectCodeCount = await _db.ProjectCodes.CountAsync();
+        ExpensePolicyCount = await _db.ExpensePolicies.CountAsync();
     }
 }

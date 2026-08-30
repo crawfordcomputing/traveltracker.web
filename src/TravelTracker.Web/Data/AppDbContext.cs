@@ -15,6 +15,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    // Fixed timestamp for HasData seed rows. MUST be a constant, not DateTimeOffset.Now:
+    // a moving value makes EF see a model change on every build (endless migration churn).
+    private static readonly DateTimeOffset SeedStamp = new(2026, 8, 30, 0, 0, 0, TimeSpan.Zero);
+
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<Destination> Destinations => Set<Destination>();
@@ -31,6 +35,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<ProjectCode> ProjectCodes => Set<ProjectCode>();
     public DbSet<Approval> Approvals => Set<Approval>();
+    public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -189,6 +194,26 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ExpensePolicy>(e =>
+        {
+            // One guideline per category. Absence of a row means "uncapped".
+            e.HasIndex(x => x.Category).IsUnique();
+
+            // Base-currency money column: explicit precision for SQL Server.
+            e.Property(x => x.CapAmount).HasPrecision(18, 2);
+
+            // Seed the defaults that ExpensePolicyCheck used to hardcode, so the
+            // over-guideline badge behaves identically the moment this ships. Admins
+            // can then edit/delete these under /Admin/ExpensePolicies. Fixed Ids are
+            // required by HasData. See ADR-0003.
+            e.HasData(
+                new ExpensePolicy { Id = 1, Category = ExpenseCategory.Meals, CapAmount = 75m, UpdatedAt = SeedStamp },
+                new ExpensePolicy { Id = 2, Category = ExpenseCategory.Lodging, CapAmount = 350m, UpdatedAt = SeedStamp },
+                new ExpensePolicy { Id = 3, Category = ExpenseCategory.Entertainment, CapAmount = 150m, UpdatedAt = SeedStamp },
+                new ExpensePolicy { Id = 4, Category = ExpenseCategory.GroundTransport, CapAmount = 100m, UpdatedAt = SeedStamp }
+            );
         });
 
         builder.Entity<MileageRate>(e =>

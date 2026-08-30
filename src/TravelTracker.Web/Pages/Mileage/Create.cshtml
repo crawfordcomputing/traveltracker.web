@@ -6,6 +6,13 @@
 <h1 class="h3 mb-1">Add mileage</h1>
 <div class="text-muted mb-3">@Model.Trip.Purpose</div>
 
+@if (Model.CostWarning is not null)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>Heads up.</strong> @Model.CostWarning
+    </div>
+}
+
 <form method="post">
     <div asp-validation-summary="All" class="text-danger mb-2"></div>
     <div class="row">

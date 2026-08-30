@@ -12,6 +12,10 @@ public class CreateModel : MileagePageModel
 
     public Trip Trip { get; private set; } = default!;
 
+    // Advisory soft-warning shown when mileage is added to a not-yet-approved trip
+    // (null once Approved/Completed). Never blocks saving. See ADR-0002.
+    public string? CostWarning => TripStatusRules.CostEntryWarning(Trip.Status);
+
     [BindProperty] public InputModel Input { get; set; } = new();
 
     // Live preview of the frozen amount is done server-side after post; nothing here

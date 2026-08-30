@@ -1,0 +1,103 @@
+@page
+@model TravelTracker.Web.Pages.Admin.ExpensePolicies.IndexModel
+@{ ViewData["Title"] = "Expense guidelines"; }
+
+<h1 class="h3 mb-3">Expense guidelines</h1>
+<p class="text-muted">
+    Per-category soft caps in base currency. A line over its category's cap shows an
+    <span class="badge bg-warning text-dark">Over guideline</span> badge on the trip.
+    Guidelines are advisory only: they never block entering or submitting an expense.
+    A category with no row here is uncapped.
+</p>
+
+<div class="row">
+<div class="col-lg-7">
+    @if (Model.Policies.Count == 0)
+    {
+        <p class="text-muted">No guidelines configured. Every category is currently uncapped.</p>
+    }
+    else
+    {
+        <table class="table table-sm align-middle">
+            <caption class="visually-hidden">Expense guideline caps by category</caption>
+            <thead><tr>
+                <th scope="col">Category</th>
+                <th scope="col">Cap</th>
+                <th scope="col">Notes</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr></thead>
+            <tbody>
+            @foreach (var p in Model.Policies)
+            {
+                <tr>
+                    <td class="text-nowrap">@p.Category</td>
+                    <td colspan="3">
+                        <form method="post" asp-page-handler="Update" asp-route-id="@p.Id"
+                              class="row g-2 align-items-center">
+                            <div class="col-auto">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Cap</span>
+                                    <input name="capAmount" value="@p.CapAmount.ToString("0.00")"
+                                           class="form-control" type="number" step="0.01" min="0"
+                                           style="max-width: 8rem;" aria-label="Cap amount for @p.Category" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <input name="notes" value="@p.Notes" class="form-control form-control-sm"
+                                       placeholder="Notes" aria-label="Notes for @p.Category" />
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        asp-page-handler="Delete" asp-route-id="@p.Id"
+                                        formnovalidate
+                                        onclick="return confirm('Remove the guideline for @p.Category? That category becomes uncapped.');">
+                                    Delete
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="col-lg-5">
+    <div class="card"><div class="card-body">
+        <h2 class="h6">Add a guideline</h2>
+        @if (!Model.HasUncapped)
+        {
+            <p class="text-muted mb-0">Every category already has a guideline. Edit or delete one at left.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Create">
+                <div asp-validation-summary="All" class="text-danger mb-2"></div>
+                <div class="mb-2">
+                    <label asp-for="Input.Category" class="form-label"></label>
+                    <select asp-for="Input.Category" asp-items="Model.UncappedCategories"
+                            class="form-select">
+                        <option value="">Choose a category…</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label asp-for="Input.CapAmount" class="form-label"></label>
+                    <input asp-for="Input.CapAmount" class="form-control" type="number" step="0.01" min="0" />
+                    <span class="text-muted small">Soft cap in base currency.</span>
+                </div>
+                <div class="mb-2">
+                    <label asp-for="Input.Notes" class="form-label"></label>
+                    <input asp-for="Input.Notes" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-primary">Add guideline</button>
+            </form>
+        }
+    </div></div>
+</div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
