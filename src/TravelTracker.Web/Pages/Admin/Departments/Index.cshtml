@@ -2,8 +2,23 @@
 @model TravelTracker.Web.Pages.Admin.Departments.IndexModel
 @{ ViewData["Title"] = "Departments"; }
 
-<div class="row"><div class="col-md-6">
+<div class="row"><div class="col-lg-8">
 <h1 class="h3 mb-3">Departments</h1>
+
+@if (TempData["Status"] is string status)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @status
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <form method="post" asp-page-handler="Create" class="mb-4">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -14,18 +29,55 @@
     <span asp-validation-for="NewName" class="text-danger"></span>
 </form>
 
-<ul class="list-group">
-@foreach (var d in Model.Departments)
-{
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        @d.Name
-        <form method="post" asp-page-handler="Delete" asp-route-id="@d.Id"
-              onsubmit="return confirm('Delete @d.Name?');" class="d-inline">
-            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-        </form>
-    </li>
-}
-</ul>
+<p class="text-muted small">
+    A department's <strong>default approver</strong> handles trip approvals for any member who
+    has no approver set on their own account. A user's personal approver always takes precedence.
+</p>
+
+<table class="table align-middle">
+    <caption class="visually-hidden">Departments and their default approver</caption>
+    <thead>
+        <tr>
+            <th scope="col">Department</th>
+            <th scope="col">Default approver</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
+    <tbody>
+    @if (Model.Departments.Count == 0)
+    {
+        <tr><td colspan="3" class="text-muted">No departments yet.</td></tr>
+    }
+    @foreach (var d in Model.Departments)
+    {
+        <tr>
+            <td>@d.Name</td>
+            <td>
+                <form method="post" asp-page-handler="SetDefaultApprover" asp-route-id="@d.Id"
+                      class="d-flex gap-2 align-items-center">
+                    <select name="approverId" class="form-select form-select-sm" style="max-width: 22rem;"
+                            aria-label="Default approver for @d.Name">
+                        <option value="">— No default —</option>
+                        @foreach (var opt in Model.ApproverOptions)
+                        {
+                            <option value="@opt.Value"
+                                    selected="@(opt.Value == d.DefaultApproverId ? "selected" : null)">@opt.Text</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                </form>
+            </td>
+            <td class="text-end">
+                <form method="post" asp-page-handler="Delete" asp-route-id="@d.Id"
+                      onsubmit="return confirm('Delete @d.Name?');" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
 <a asp-page="/Admin/Index" class="btn btn-link mt-3">Back to admin</a>
 </div></div>
 

@@ -48,4 +48,47 @@ public static class ApproverGraph
         return CreatesCycle(userId, approverId,
             id => approverByUser.TryGetValue(id, out var a) ? a : null);
     }
+
+    // Why a user was left out of a bulk approver assignment.
+    public enum BulkSkipReason
+    {
+        // The user was the approver being assigned (can't approve their own trips).
+        SelfApproval,
+        // Assigning this approver would put the user on their own approver chain.
+        WouldCreateCycle,
+    }
+
+    // Plans a "set this one approver on all these users" action without touching the
+    // database: decides which users can take the approver and which must be skipped.
+    // approverByUser is the CURRENT approver map and is MUTATED as assignments are
+    // planned, so two selected users that form a chain (A picks B while B is being
+    // pointed at A) are still caught within a single batch. Order follows userIds.
+    public static (List<string> ToAssign, List<(string UserId, BulkSkipReason Reason)> Skipped)
+        PlanBulkApproverAssignment(
+            string approverId, IEnumerable<string> userIds,
+            Dictionary<string, string?> approverByUser)
+    {
+        ArgumentNullException.ThrowIfNull(approverId);
+        ArgumentNullException.ThrowIfNull(userIds);
+        ArgumentNullException.ThrowIfNull(approverByUser);
+
+        var toAssign = new List<string>();
+        var skipped = new List<(string, BulkSkipReason)>();
+        foreach (var userId in userIds)
+        {
+            if (userId == approverId)
+            {
+                skipped.Add((userId, BulkSkipReason.SelfApproval));
+                continue;
+            }
+            if (CreatesCycle(userId, approverId, approverByUser))
+            {
+                skipped.Add((userId, BulkSkipReason.WouldCreateCycle));
+                continue;
+            }
+            approverByUser[userId] = approverId; // reflect the planned edge for later rows
+            toAssign.Add(userId);
+        }
+        return (toAssign, skipped);
+    }
 }

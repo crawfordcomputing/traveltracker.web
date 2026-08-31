@@ -1,6 +1,23 @@
 @page
 @model TravelTracker.Web.Pages.Admin.Users.IndexModel
-@{ ViewData["Title"] = "Users"; }
+@{
+    ViewData["Title"] = "Users";
+
+    // Build a sort link for a column: toggles asc/desc on the active column,
+    // preserves the current filter.
+    Func<string, string> sortHref = key =>
+    {
+        var active = string.Equals(Model.Sort, key, StringComparison.Ordinal);
+        var next = active ? key + "_desc" : key;
+        // If already on the _desc variant, go back to asc.
+        if (string.Equals(Model.Sort, key + "_desc", StringComparison.Ordinal)) next = key;
+        return Url.Page("/Admin/Users/Index", new { Filter = Model.Filter, Sort = next }) ?? "";
+    };
+    Func<string, string> sortCaret = key =>
+        string.Equals(Model.Sort, key, StringComparison.Ordinal) ? " ▲"
+        : string.Equals(Model.Sort, key + "_desc", StringComparison.Ordinal) ? " ▼"
+        : "";
+}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Users</h1>
@@ -17,7 +34,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
-
 @if (TempData["Status"] is string status)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -25,7 +41,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
-
 @if (TempData["Error"] is string error)
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -34,53 +49,152 @@
     </div>
 }
 
-<table class="table table-striped align-middle">
-    <caption class="visually-hidden">User accounts</caption>
-    <thead>
-        <tr><th scope="col">Email</th><th scope="col">Display name</th><th scope="col">Department</th><th scope="col">Approver</th><th scope="col">Roles</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
-    </thead>
-    <tbody>
-    @if (Model.Users.Count == 0)
-    {
-        <tr><td colspan="7" class="text-muted">No users match.</td></tr>
-    }
-    @foreach (var u in Model.Users)
-    {
-        <tr class="@(u.IsActive ? "" : "text-muted")">
-            <td>@u.Email</td>
-            <td>@u.DisplayName</td>
-            <td>@(u.Department ?? "—")</td>
-            <td>@(u.Approver ?? "—")</td>
-            <td>@(string.IsNullOrEmpty(u.Roles) ? "—" : u.Roles)</td>
-            <td>
-                @if (u.IsActive)
+<div class="d-flex flex-wrap gap-3 align-items-end mb-3">
+    <form method="get" class="d-flex align-items-end gap-2">
+        <div>
+            <label for="Filter" class="form-label small mb-1">Approver</label>
+            <select id="Filter" name="Filter" class="form-select form-select-sm" style="min-width: 12rem;"
+                    onchange="this.form.submit()">
+                <option value="" selected="@(string.IsNullOrEmpty(Model.Filter) ? "selected" : null)">All users</option>
+                <option value="unassigned" selected="@(Model.Filter == "unassigned" ? "selected" : null)">No approver set</option>
+                <option value="assigned" selected="@(Model.Filter == "assigned" ? "selected" : null)">Approver set</option>
+            </select>
+        </div>
+        <input type="hidden" name="Sort" value="@Model.Sort" />
+        <noscript><button type="submit" class="btn btn-sm btn-secondary">Apply</button></noscript>
+    </form>
+    <div class="text-muted small">@Model.Users.Count shown</div>
+</div>
+
+<form method="post" asp-page-handler="BulkAssign" id="bulkForm">
+    <input type="hidden" name="Filter" value="@Model.Filter" />
+    <input type="hidden" name="Sort" value="@Model.Sort" />
+
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
+            <span class="fw-semibold small">Bulk assign approver:</span>
+            <select name="bulkApproverId" class="form-select form-select-sm" style="max-width: 22rem;"
+                    aria-label="Approver to assign to selected users">
+                <option value="">— Choose approver —</option>
+                @foreach (var opt in Model.ApproverOptions)
                 {
-                    <span class="badge bg-success">Active</span>
+                    <option value="@opt.Value">@opt.Text</option>
                 }
-                else
-                {
-                    <span class="badge bg-secondary">Inactive</span>
-                }
-            </td>
-            <td class="text-end">
-                <a asp-page="/Admin/Users/Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary">Edit</a>
-                <form method="post" asp-page-handler="ResetPassword" asp-route-id="@u.Id" class="d-inline"
-                      onsubmit="return confirm('Reset the password for @u.Email? A new temporary password will be shown once.');">
-                    <button type="submit" class="btn btn-sm btn-outline-secondary">Reset password</button>
-                </form>
-                <form method="post" asp-page-handler="ToggleActive" asp-route-id="@u.Id" class="d-inline">
-                    @if (u.IsActive)
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Assign to selected</button>
+            <span class="text-muted small" id="selCount"></span>
+        </div>
+    </div>
+
+    <table class="table table-striped align-middle">
+        <caption class="visually-hidden">User accounts</caption>
+        <thead>
+            <tr>
+                <th scope="col" style="width: 2.5rem;">
+                    <input type="checkbox" id="selectAll" class="form-check-input" aria-label="Select all users" />
+                </th>
+                <th scope="col"><a href="@sortHref("email")" class="text-decoration-none text-reset">Email@(sortCaret("email"))</a></th>
+                <th scope="col"><a href="@sortHref("name")" class="text-decoration-none text-reset">Display name@(sortCaret("name"))</a></th>
+                <th scope="col"><a href="@sortHref("department")" class="text-decoration-none text-reset">Department@(sortCaret("department"))</a></th>
+                <th scope="col"><a href="@sortHref("approver")" class="text-decoration-none text-reset">Approver@(sortCaret("approver"))</a></th>
+                <th scope="col">Roles</th>
+                <th scope="col"><a href="@sortHref("status")" class="text-decoration-none text-reset">Status@(sortCaret("status"))</a></th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (Model.Users.Count == 0)
+        {
+            <tr><td colspan="8" class="text-muted">No users match.</td></tr>
+        }
+        @foreach (var u in Model.Users)
+        {
+            <tr class="@(u.IsActive ? "" : "text-muted")">
+                <td>
+                    <input type="checkbox" name="selectedIds" value="@u.Id" class="form-check-input row-check"
+                           aria-label="Select @u.Email" />
+                </td>
+                <td>@u.Email</td>
+                <td>@u.DisplayName</td>
+                <td>@(u.Department ?? "—")</td>
+                <td>
+                    @if (u.Approver is not null)
                     {
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                        @u.Approver
+                    }
+                    else if (u.DeptDefaultApprover is not null)
+                    {
+                        <span class="badge bg-light text-dark border" title="No personal approver set — inherited from this user's department default.">
+                            via dept: @u.DeptDefaultApprover
+                        </span>
                     }
                     else
                     {
-                        <button type="submit" class="btn btn-sm btn-outline-success">Reactivate</button>
+                        <span>—</span>
                     }
-                </form>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </td>
+                <td>@(string.IsNullOrEmpty(u.Roles) ? "—" : u.Roles)</td>
+                <td>
+                    @if (u.IsActive)
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactive</span>
+                    }
+                </td>
+                <td class="text-end text-nowrap">
+                    <a asp-page="/Admin/Users/Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                            formaction="@Url.Page("/Admin/Users/Index", "ResetPassword", new { id = u.Id })"
+                            formmethod="post"
+                            onclick="return confirm('Reset the password for @u.Email? A new temporary password will be shown once.');">
+                        Reset password
+                    </button>
+                    @if (u.IsActive)
+                    {
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                formaction="@Url.Page("/Admin/Users/Index", "ToggleActive", new { id = u.Id })"
+                                formmethod="post">Deactivate</button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn btn-sm btn-outline-success"
+                                formaction="@Url.Page("/Admin/Users/Index", "ToggleActive", new { id = u.Id })"
+                                formmethod="post">Reactivate</button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</form>
+
 <a asp-page="/Admin/Index" class="btn btn-link">Back to admin</a>
+
+@section Scripts {
+<script>
+    (function () {
+        var selectAll = document.getElementById('selectAll');
+        var checks = Array.prototype.slice.call(document.querySelectorAll('.row-check'));
+        var count = document.getElementById('selCount');
+        function refresh() {
+            var n = checks.filter(function (c) { return c.checked; }).length;
+            count.textContent = n ? n + ' selected' : '';
+            if (selectAll) {
+                selectAll.checked = n > 0 && n === checks.length;
+                selectAll.indeterminate = n > 0 && n < checks.length;
+            }
+        }
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checks.forEach(function (c) { c.checked = selectAll.checked; });
+                refresh();
+            });
+        }
+        checks.forEach(function (c) { c.addEventListener('change', refresh); });
+        refresh();
+    })();
+</script>
+}

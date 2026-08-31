@@ -44,6 +44,17 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
         builder.Entity<Department>()
             .HasIndex(d => d.Name).IsUnique();
 
+        // Department-level fallback approver (see Department.DefaultApproverId).
+        // Restrict on delete, matching every other AppUser FK: no hard-delete path,
+        // and Restrict avoids the multiple-cascade-path error on SQL Server. Neither
+        // this FK nor AppUser.DepartmentId (SetNull) cascades, so the two-way
+        // AppUser<->Department reference is safe.
+        builder.Entity<Department>()
+            .HasOne(d => d.DefaultApprover)
+            .WithMany()
+            .HasForeignKey(d => d.DefaultApproverId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Entity<Country>().HasIndex(c => c.Code).IsUnique();
         builder.Entity<UsState>().HasIndex(s => s.Code).IsUnique();
 

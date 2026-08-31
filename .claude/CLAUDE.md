@@ -30,6 +30,7 @@
 - Do not read back full test output into context during normal iteration
 - When a batch of changes is done, list what SHOULD be tested rather than running it
 - Only run tests when the user says "run the tests" (or similar)
+- Leave `dotnet test` / `dotnet build` to the user to run manually; do not kick off the test suite yourself unless explicitly told to in that message
 
 ### 5. Demand Elegance (Balanced)
 - For non-trivial changes: pause and ask "is there a more elegant way?"

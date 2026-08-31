@@ -71,6 +71,8 @@ public class DetailsModel : TripPageModel
     {
         Func<IQueryable<Trip>, IQueryable<Trip>> include =
             q => q.Include(t => t.Traveler).ThenInclude(u => u!.Approver)
+                  .Include(t => t.Traveler).ThenInclude(u => u!.Department)
+                        .ThenInclude(d => d!.DefaultApprover)
                   .Include(t => t.Destinations)
                   .Include(t => t.CostCenter)
                   .Include(t => t.ProjectCode);
@@ -84,7 +86,7 @@ public class DetailsModel : TripPageModel
         if (trip is null)
         {
             var candidate = await include(Db.Trips).FirstOrDefaultAsync(t => t.Id == id);
-            var approverId = candidate?.Traveler?.ApproverId;
+            var approverId = candidate is null ? null : EffectiveApproverId(candidate);
             if (candidate is not null && approverId is not null && approverId == CurrentUserId)
                 trip = candidate;
         }
@@ -296,11 +298,12 @@ public class DetailsModel : TripPageModel
             return RedirectToPage("Details", new { id });
         }
 
-        var approver = Trip.Traveler?.Approver;
+        var approver = EffectiveApprover(Trip);
         if (approver is null)
         {
             TempData["TripError"] =
-                "No approver is assigned to this traveler. Ask an admin to set one before submitting.";
+                "No approver is assigned to this traveler, and their department has no default "
+                + "approver. Ask an admin to set one before submitting.";
             return RedirectToPage("Details", new { id });
         }
 
@@ -365,7 +368,7 @@ public class DetailsModel : TripPageModel
         await TrySendAsync(Trip.Traveler?.Email,
             $"Your trip was {verb}: {Trip.Purpose}",
             $"<p>Your trip <strong>{Trip.Purpose}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
-            $"was {verb} by {Trip.Traveler?.Approver?.DisplayName ?? "your approver"}.</p>" +
+            $"was {verb} by {EffectiveApprover(Trip)?.DisplayName ?? "your approver"}.</p>" +
             (comment is null ? "" : $"<p>Comment: {comment}</p>"));
 
         TempData["ExpenseInfo"] = $"Trip {verb}.";
@@ -376,8 +379,28 @@ public class DetailsModel : TripPageModel
     // as one. Admin override keeps a stuck queue unblockable if an approver leaves.
     private bool IsApproverOf(Trip trip)
     {
-        var approverId = trip.Traveler?.ApproverId;
+        var approverId = EffectiveApproverId(trip);
         return (approverId is not null && approverId == CurrentUserId) || User.IsInRole(Roles.Admin);
+    }
+
+    // Effective approver of a trip's traveler: their own ApproverId, else their
+    // department default (see Domain/ApproverResolution). Requires Traveler,
+    // Traveler.Approver, and Traveler.Department.DefaultApprover to be loaded.
+    private static string? EffectiveApproverId(Trip trip)
+    {
+        var t = trip.Traveler;
+        return t is null
+            ? null
+            : ApproverResolution.EffectiveApproverId(t.Id, t.ApproverId, t.Department?.DefaultApproverId);
+    }
+
+    private static AppUser? EffectiveApprover(Trip trip)
+    {
+        var t = trip.Traveler;
+        if (t is null) return null;
+        var id = ApproverResolution.EffectiveApproverId(t.Id, t.ApproverId, t.Department?.DefaultApproverId);
+        if (id is null) return null;
+        return t.ApproverId == id ? t.Approver : t.Department?.DefaultApprover;
     }
 
     // Email is best-effort: an approval is already persisted, so a mail outage must

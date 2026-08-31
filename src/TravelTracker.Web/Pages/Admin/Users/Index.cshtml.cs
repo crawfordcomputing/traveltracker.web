@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
@@ -19,23 +20,115 @@ public class IndexModel : PageModel
         _userManager = userManager;
     }
 
-    public record Row(string Id, string Email, string DisplayName, string? Department, string Roles, bool IsActive, string? Approver);
+    public record Row(string Id, string Email, string DisplayName, string? Department, string Roles, bool IsActive, string? Approver, string? DeptDefaultApprover);
     public List<Row> Users { get; private set; } = new();
+
+    // Active users offered as the bulk-assign target (value = Id, text = "name (email)").
+    public SelectList ApproverOptions { get; private set; } = default!;
+
+    // Current filter/sort, echoed back so the UI can reflect and preserve them.
+    [BindProperty(SupportsGet = true)] public string? Filter { get; set; }   // null|all, unassigned, assigned
+    [BindProperty(SupportsGet = true)] public string? Sort { get; set; }     // email[_desc], name, department, approver, status
 
     public async Task OnGetAsync()
     {
-        var users = await _db.Users
-            .Include(u => u.Department)
-            .Include(u => u.Approver)
-            .OrderBy(u => u.Email).ToListAsync();
+        IQueryable<AppUser> q = _db.Users
+            .Include(u => u.Department).ThenInclude(d => d!.DefaultApprover)
+            .Include(u => u.Approver);
 
+        q = Filter switch
+        {
+            "unassigned" => q.Where(u => u.ApproverId == null),
+            "assigned"   => q.Where(u => u.ApproverId != null),
+            _            => q,
+        };
+
+        q = Sort switch
+        {
+            "email_desc"      => q.OrderByDescending(u => u.Email),
+            "name"            => q.OrderBy(u => u.DisplayName),
+            "name_desc"       => q.OrderByDescending(u => u.DisplayName),
+            "department"      => q.OrderBy(u => u.Department!.Name).ThenBy(u => u.Email),
+            "department_desc" => q.OrderByDescending(u => u.Department!.Name).ThenBy(u => u.Email),
+            "approver"        => q.OrderBy(u => u.Approver!.DisplayName).ThenBy(u => u.Email),
+            "approver_desc"   => q.OrderByDescending(u => u.Approver!.DisplayName).ThenBy(u => u.Email),
+            "status"          => q.OrderByDescending(u => u.IsActive).ThenBy(u => u.Email),
+            "status_desc"     => q.OrderBy(u => u.IsActive).ThenBy(u => u.Email),
+            _                 => q.OrderBy(u => u.Email),
+        };
+
+        var users = await q.ToListAsync();
         foreach (var u in users)
         {
             var roles = await _userManager.GetRolesAsync(u);
+            var deptDefault = u.ApproverId == null ? u.Department?.DefaultApprover?.DisplayName : null;
             Users.Add(new Row(u.Id, u.Email ?? "", u.DisplayName,
                 u.Department?.Name, string.Join(", ", roles), u.IsActive,
-                u.Approver?.DisplayName));
+                u.Approver?.DisplayName, deptDefault));
         }
+
+        ApproverOptions = await _db.ApproverSelectListAsync();
+    }
+
+    // Assign one approver to many users in a single action. Rows that would make a
+    // user their own approver, or that would create a reporting cycle, are skipped
+    // and reported; the rest are applied. See Domain/ApproverGraph.
+    public async Task<IActionResult> OnPostBulkAssignAsync(string[] selectedIds, string? bulkApproverId)
+    {
+        bulkApproverId = string.IsNullOrWhiteSpace(bulkApproverId) ? null : bulkApproverId;
+
+        if (selectedIds is null || selectedIds.Length == 0)
+        {
+            TempData["Error"] = "Select at least one user first.";
+            return RedirectToPage(new { Filter, Sort });
+        }
+        if (bulkApproverId is null)
+        {
+            TempData["Error"] = "Choose an approver to assign.";
+            return RedirectToPage(new { Filter, Sort });
+        }
+        if (await _userManager.FindByIdAsync(bulkApproverId) is null)
+        {
+            TempData["Error"] = "Unknown approver.";
+            return RedirectToPage(new { Filter, Sort });
+        }
+
+        // The current approver map (userId -> approverId), fed to the pure planner
+        // which decides assign-vs-skip and mutates the map so in-batch chains are
+        // caught. Only distinct, real user ids are considered.
+        var chain = await _db.Users
+            .Where(u => u.ApproverId != null)
+            .Select(u => new { u.Id, u.ApproverId })
+            .ToDictionaryAsync(x => x.Id, x => x.ApproverId);
+
+        var selected = await _db.Users
+            .Where(u => selectedIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        var (toAssign, skipped) = ApproverGraph.PlanBulkApproverAssignment(
+            bulkApproverId, selected.Keys, chain);
+
+        foreach (var uid in toAssign)
+            selected[uid].ApproverId = bulkApproverId;
+        if (toAssign.Count > 0) await _db.SaveChangesAsync();
+
+        var approverName = (await _userManager.FindByIdAsync(bulkApproverId))?.DisplayName ?? "the approver";
+        var msg = $"Assigned {approverName} to {toAssign.Count} user{(toAssign.Count == 1 ? "" : "s")}.";
+        if (skipped.Count > 0)
+        {
+            var details = skipped.Select(s =>
+            {
+                var email = selected.TryGetValue(s.UserId, out var u) ? u.Email : s.UserId;
+                var reason = s.Reason == ApproverGraph.BulkSkipReason.SelfApproval
+                    ? "can't approve their own trips"
+                    : "would create a reporting cycle";
+                return $"{email} ({reason})";
+            });
+            msg += $" Skipped {skipped.Count}: {string.Join("; ", details)}.";
+        }
+        TempData["Status"] = msg;
+
+        return RedirectToPage(new { Filter, Sort });
     }
 
     // Deactivate (offboard) or reactivate a user. Deactivating the last active
