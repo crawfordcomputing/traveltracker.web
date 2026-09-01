@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -72,7 +73,8 @@ public class TripWorkflowTests
             new NoopEmail(), NullLogger<DetailsModel>.Instance)
         {
             PageContext = ctx,
-            TempData = temp
+            TempData = temp,
+            Url = new StubUrlHelper(ctx)
         };
     }
 
@@ -399,6 +401,19 @@ public class TripWorkflowTests
     {
         public IDictionary<string, object> LoadTempData(HttpContext context) => new Dictionary<string, object>();
         public void SaveTempData(HttpContext context, IDictionary<string, object> values) { }
+    }
+
+    // Handlers that email absolute links call Url.Page, which needs an IUrlHelper.
+    // Unit tests build the model directly, so supply a stub; the URL value is not asserted.
+    private sealed class StubUrlHelper : IUrlHelper
+    {
+        public StubUrlHelper(ActionContext actionContext) => ActionContext = actionContext;
+        public ActionContext ActionContext { get; }
+        public string? Action(UrlActionContext actionContext) => "/";
+        public string? Content(string? contentPath) => contentPath;
+        public bool IsLocalUrl(string? url) => true;
+        public string? Link(string? routeName, object? values) => "http://localhost/";
+        public string? RouteUrl(UrlRouteContext routeContext) => "http://localhost/Trips/Details/1";
     }
 
     // Approval tests assert on persisted rows, not on email, so a no-op is enough.
