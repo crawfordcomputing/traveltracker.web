@@ -33,6 +33,14 @@ public class DetailsModel : TripPageModel
     public IReadOnlyList<Approval> ApprovalHistory { get; private set; } = Array.Empty<Approval>();
     public IReadOnlyList<Trip> Conflicts { get; private set; } = Array.Empty<Trip>();
 
+    // Whether the itinerary (legs) may be added/edited/removed in the trip's current
+    // status. Drives both the UI (hide the edit controls) and the handler guards.
+    public bool CanEditItinerary { get; private set; }
+
+    private const string ItineraryLockedMessage =
+        "This trip's itinerary is locked in its current status. Use \"Revise itinerary\" "
+        + "to send an approved trip back to draft before changing its legs.";
+
     public IReadOnlyList<Expense> Expenses { get; private set; } = Array.Empty<Expense>();
     public ExpenseRollupResult Rollup { get; private set; } = ExpenseRollupResult.Empty;
 
@@ -95,6 +103,7 @@ public class DetailsModel : TripPageModel
         Trip = trip;
         NextStates = TripStatusRules.NextStates(trip.Status);
         TravelerTransitions = TripStatusRules.TransitionsFor(trip.Status, TripActor.Traveler);
+        CanEditItinerary = TripStatusRules.ItineraryEditable(trip.Status);
         CanApprove = IsApproverOf(trip);
 
         ApprovalHistory = await Db.Approvals
@@ -162,6 +171,12 @@ public class DetailsModel : TripPageModel
     {
         if (!await LoadAsync(id)) return NotFound();
 
+        if (!CanEditItinerary)
+        {
+            TempData["TripError"] = ItineraryLockedMessage;
+            return RedirectToPage("Details", new { id });
+        }
+
         var legError = TripDateRules.ValidateLeg(NewLeg.ArriveDate, NewLeg.DepartDate);
         if (legError is not null)
             ModelState.AddModelError("NewLeg.DepartDate", legError);
@@ -192,6 +207,12 @@ public class DetailsModel : TripPageModel
     public async Task<IActionResult> OnPostRemoveLegAsync(int id, int legId)
     {
         if (!await LoadAsync(id)) return NotFound();
+
+        if (!CanEditItinerary)
+        {
+            TempData["TripError"] = ItineraryLockedMessage;
+            return RedirectToPage("Details", new { id });
+        }
 
         var leg = await Db.Destinations.FirstOrDefaultAsync(d => d.Id == legId && d.TripId == id);
         if (leg is not null)
@@ -281,8 +302,28 @@ public class DetailsModel : TripPageModel
             return RedirectToPage("Details", new { id });
         }
 
+        // Reopening an Approved trip (Approved -> Draft "Revise itinerary") invalidates
+        // the approver's sign-off. Record it in the same history log the approve/reject
+        // decisions use, so the trail shows the approval was deliberately reopened.
+        var wasApproved = TripStatusRules.ItineraryEditable(Trip.Status) == false
+                          && target == TripStatus.Draft
+                          && Trip.Status is TripStatus.Approved or TripStatus.Planned;
+
         Trip.Status = target;
         Trip.CancellationReason = target == TripStatus.Cancelled ? reason!.Trim() : null;
+
+        if (wasApproved)
+        {
+            Db.Approvals.Add(new Approval
+            {
+                TripId = Trip.Id,
+                ApproverId = CurrentUserId ?? string.Empty,
+                Decision = ApprovalDecision.Reopened,
+                Comment = "Reopened for itinerary revision.",
+                DecidedAt = DateTimeOffset.UtcNow
+            });
+        }
+
         await Db.SaveChangesAsync();
         return RedirectToPage("Details", new { id });
     }
@@ -310,12 +351,17 @@ public class DetailsModel : TripPageModel
         Trip.Status = TripStatus.Submitted;
         await Db.SaveChangesAsync();
 
+        // Absolute link to this trip's Details page, where the approver acts
+        // (same Url.Page + Request.Scheme pattern as the password-reset email).
+        var approvalUrl = Url.Page("/Trips/Details", pageHandler: null,
+            values: new { id }, protocol: Request.Scheme);
+
         await TrySendAsync(approver.Email,
             $"Trip awaiting your approval: {Trip.Purpose}",
             $"<p>{Trip.Traveler?.DisplayName} submitted a trip for your approval.</p>" +
             $"<p><strong>{Trip.Purpose}</strong><br>" +
             $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}</p>" +
-            "<p>Open Travel Tracker to review and approve or reject it.</p>");
+            $"<p><a href=\"{approvalUrl}\">Review and approve or reject this trip</a></p>");
 
         TempData["ExpenseInfo"] = $"Submitted to {approver.DisplayName} for approval.";
         return RedirectToPage("Details", new { id });

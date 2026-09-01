@@ -85,4 +85,34 @@ public class TripStatusRulesTests
     public void CostEntryWarning_Is_Present_When_Not_Approved(TripStatus status)
         => Assert.False(string.IsNullOrWhiteSpace(TripStatusRules.CostEntryWarning(status)));
 
+    [Theory]
+    // Itinerary is editable only while Draft or Submitted.
+    [InlineData(TripStatus.Draft, true)]
+    [InlineData(TripStatus.Submitted, true)]
+    [InlineData(TripStatus.Approved, false)]
+    [InlineData(TripStatus.Rejected, false)]
+    [InlineData(TripStatus.Completed, false)]
+    [InlineData(TripStatus.Cancelled, false)]
+    // Legacy Planned maps to Approved via Canonical, so it locks too.
+    [InlineData(TripStatus.Planned, false)]
+    public void ItineraryEditable_Only_Draft_Or_Submitted(TripStatus status, bool expected)
+        => Assert.Equal(expected, TripStatusRules.ItineraryEditable(status));
+
+    [Fact]
+    public void Approved_Traveler_Can_Revise_Back_To_Draft()
+    {
+        // The revise path: an approved trip goes back to Draft (not Submitted) so the
+        // approval is invalidated and the Submit -> Approve gate runs again.
+        Assert.True(TripStatusRules.CanTransition(TripStatus.Approved, TripStatus.Draft, TripActor.Traveler));
+        Assert.False(TripStatusRules.CanTransition(TripStatus.Approved, TripStatus.Submitted, TripActor.Traveler));
+
+        var verb = TripStatusRules.TransitionsFor(TripStatus.Approved, TripActor.Traveler)
+            .Single(t => t.To == TripStatus.Draft).Verb;
+        Assert.Equal("Revise itinerary", verb);
+    }
+
+    [Fact]
+    public void Legacy_Planned_Traveler_Can_Also_Revise()
+        => Assert.True(TripStatusRules.CanTransition(TripStatus.Planned, TripStatus.Draft, TripActor.Traveler));
+
 }

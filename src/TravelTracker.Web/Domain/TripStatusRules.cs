@@ -48,6 +48,16 @@ public static class TripStatusRules
             + "submitted and approved when you can.", // Draft
     };
 
+    // Whether a trip's itinerary (legs: add/edit/remove) may be changed in this
+    // status. Editable only while the trip is still being shaped or is awaiting a
+    // decision the approver hasn't made yet: Draft and Submitted. Once Approved,
+    // Completed, Cancelled, or Rejected the itinerary is locked. Legacy Planned maps
+    // to Approved via Canonical, so pre-M6 approved trips lock too. To change an
+    // approved trip's itinerary the traveler must first Revise it back to Draft
+    // (Approved -> Draft), which invalidates the approval and forces re-approval.
+    public static bool ItineraryEditable(TripStatus status) =>
+        Canonical(status) is TripStatus.Draft or TripStatus.Submitted;
+
     private static readonly Dictionary<TripStatus, TripTransition[]> Allowed = new()
     {
         [TripStatus.Draft] = new[]
@@ -64,6 +74,10 @@ public static class TripStatusRules
         [TripStatus.Approved] = new[]
         {
             new TripTransition(TripStatus.Completed, TripActor.Traveler, "Mark completed"),
+            // Reopen an approved trip to change the itinerary. Goes back to Draft (not
+            // Submitted) on purpose: any itinerary change invalidates the approver's
+            // sign-off, so the trip must run the Submit -> Approve gate again.
+            new TripTransition(TripStatus.Draft,     TripActor.Traveler, "Revise itinerary"),
             new TripTransition(TripStatus.Cancelled, TripActor.Traveler, "Cancel trip"),
         },
         [TripStatus.Rejected] = new[]

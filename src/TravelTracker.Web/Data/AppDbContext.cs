@@ -36,6 +36,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
     public DbSet<ProjectCode> ProjectCodes => Set<ProjectCode>();
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
+    public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -295,6 +296,13 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex(a => a.TripId);
+        });
+
+        builder.Entity<NotificationLog>(e =>
+        {
+            // Admin view is "newest first, optionally filtered by status".
+            e.HasIndex(x => x.SentAt);
+            e.HasIndex(x => x.Status);
         });
 
         builder.Entity<ArrangerAssignment>(e =>

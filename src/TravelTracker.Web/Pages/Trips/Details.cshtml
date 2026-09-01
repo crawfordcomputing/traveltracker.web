@@ -131,7 +131,7 @@
             @foreach (var a in Model.ApprovalHistory)
             {
                 <li>
-                    <span class="badge @(a.Decision == ApprovalDecision.Approved ? "bg-success" : "bg-danger")">@a.Decision</span>
+                    <span class="badge @(a.Decision switch { ApprovalDecision.Approved => "bg-success", ApprovalDecision.Rejected => "bg-danger", _ => "bg-secondary" })">@a.Decision</span>
                     @(a.Approver?.DisplayName ?? "—") &middot; @a.DecidedAt.ToString("MMM d, yyyy h:mm tt")
                     @if (!string.IsNullOrEmpty(a.Comment)) { <span>&mdash; @a.Comment</span> }
                 </li>
@@ -170,11 +170,18 @@ else
                 <td>@leg.DepartDate.ToString("MMM d, yyyy")</td>
                 <td>@leg.Notes</td>
                 <td class="text-end text-nowrap">
-                    <a asp-page="EditLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id"
-                       class="btn btn-sm btn-outline-primary">Edit</a>
-                    <form method="post" asp-page-handler="RemoveLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
-                    </form>
+                    @if (Model.CanEditItinerary)
+                    {
+                        <a asp-page="EditLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id"
+                           class="btn btn-sm btn-outline-primary">Edit</a>
+                        <form method="post" asp-page-handler="RemoveLeg" asp-route-id="@Model.Trip.Id" asp-route-legId="@leg.Id" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">Locked</span>
+                    }
                 </td>
             </tr>
         }
@@ -182,6 +189,8 @@ else
     </table>
 }
 
+@if (Model.CanEditItinerary)
+{
 <div class="card mt-3"><div class="card-body">
     <h3 class="h6">Add a leg</h3>
     <form method="post" asp-page-handler="AddLeg" asp-route-id="@Model.Trip.Id" class="row g-2">
@@ -231,6 +240,15 @@ else
         </div>
     </form>
 </div></div>
+}
+else
+{
+    <p class="text-muted small mt-3">
+        The itinerary is locked because this trip is @Model.Trip.Status. To change it, use
+        <strong>Revise itinerary</strong> above to send the trip back to draft, edit the legs,
+        then resubmit for approval.
+    </p>
+}
 
 <div class="d-flex justify-content-between align-items-center mt-4">
     <h2 class="h5 mb-0">Expenses</h2>

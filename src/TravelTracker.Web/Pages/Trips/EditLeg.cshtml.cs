@@ -15,6 +15,10 @@ public class EditLegModel : TripPageModel
 
     [BindProperty] public LegInput Input { get; set; } = new();
     public int TripId { get; private set; }
+
+    private const string ItineraryLockedMessage =
+        "This trip's itinerary is locked in its current status. Use \"Revise itinerary\" "
+        + "to send an approved trip back to draft before changing its legs.";
     public string TripPurpose { get; private set; } = string.Empty;
 
     public SelectList Countries { get; private set; } = default!;
@@ -55,6 +59,12 @@ public class EditLegModel : TripPageModel
         var leg = trip.Destinations.FirstOrDefault(d => d.Id == legId);
         if (leg is null) return NotFound();
 
+        if (!TripStatusRules.ItineraryEditable(trip.Status))
+        {
+            TempData["TripError"] = ItineraryLockedMessage;
+            return RedirectToPage("Details", new { id });
+        }
+
         TripId = trip.Id;
         TripPurpose = trip.Purpose;
         Input = new LegInput
@@ -81,6 +91,12 @@ public class EditLegModel : TripPageModel
 
         var leg = trip.Destinations.FirstOrDefault(d => d.Id == Input.Id);
         if (leg is null) return NotFound();
+
+        if (!TripStatusRules.ItineraryEditable(trip.Status))
+        {
+            TempData["TripError"] = ItineraryLockedMessage;
+            return RedirectToPage("Details", new { id });
+        }
 
         TripId = trip.Id;
         TripPurpose = trip.Purpose;

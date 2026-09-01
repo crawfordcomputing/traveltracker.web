@@ -301,6 +301,80 @@ public class TripWorkflowTests
         }
     }
 
+    [Fact]
+    public async Task Approved_Trip_Itinerary_Is_Locked_Until_Revised()
+    {
+        var dbFile = Path.Combine(Path.GetTempPath(), $"tt-trip-{Guid.NewGuid():N}.db");
+        var sp = BuildServices(dbFile);
+        try
+        {
+            using var scope = sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var um = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            await db.Database.EnsureCreatedAsync();
+
+            var approver = new AppUser { UserName = "mgr@example.com", Email = "mgr@example.com", DisplayName = "Mgr" };
+            await um.CreateAsync(approver, "Emp-12345!");
+            var emp = new AppUser
+            {
+                UserName = "emp@example.com", Email = "emp@example.com", DisplayName = "Emp",
+                ApproverId = approver.Id
+            };
+            await um.CreateAsync(emp, "Emp-12345!");
+            var empUser = Principal(emp.Id);
+            var approverUser = Principal(approver.Id);
+
+            var trip = new Trip
+            {
+                TravelerId = emp.Id, Purpose = "Onsite", Status = TripStatus.Draft,
+                StartDate = DateOnly.FromDateTime(DateTime.Today),
+                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(2))
+            };
+            db.Trips.Add(trip);
+            await db.SaveChangesAsync();
+            var tripId = trip.Id;
+
+            await AddLeg(scope.ServiceProvider, db, empUser, tripId, "London", "UK");
+
+            // Submit + approve.
+            Assert.IsType<RedirectToPageResult>(await NewDetails(scope.ServiceProvider, db, empUser).OnPostSubmitAsync(tripId));
+            Assert.IsType<RedirectToPageResult>(await NewDetails(scope.ServiceProvider, db, approverUser).OnPostApproveAsync(tripId, "ok"));
+            Assert.Equal(TripStatus.Approved, (await Reload(db, tripId)).Status);
+
+            // Adding a leg while Approved is refused: no new leg persists.
+            var addWhileLocked = NewDetails(scope.ServiceProvider, db, empUser);
+            addWhileLocked.NewLeg = new DetailsModel.LegInput
+            {
+                City = "Paris", Country = "France",
+                ArriveDate = DateOnly.FromDateTime(DateTime.Today),
+                DepartDate = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
+            };
+            Assert.IsType<RedirectToPageResult>(await addWhileLocked.OnPostAddLegAsync(tripId));
+            Assert.Equal(1, await db.Destinations.CountAsync(d => d.TripId == tripId));
+
+            // Removing a leg while Approved is refused too.
+            var existingLeg = await db.Destinations.FirstAsync(d => d.TripId == tripId);
+            Assert.IsType<RedirectToPageResult>(
+                await NewDetails(scope.ServiceProvider, db, empUser).OnPostRemoveLegAsync(tripId, existingLeg.Id));
+            Assert.Equal(1, await db.Destinations.CountAsync(d => d.TripId == tripId));
+
+            // Revise: Approved -> Draft records a Reopened audit row and unlocks editing.
+            Assert.IsType<RedirectToPageResult>(
+                await NewDetails(scope.ServiceProvider, db, empUser).OnPostStatusAsync(tripId, TripStatus.Draft));
+            Assert.Equal(TripStatus.Draft, (await Reload(db, tripId)).Status);
+            Assert.Equal(1, await db.Approvals.CountAsync(a => a.TripId == tripId && a.Decision == ApprovalDecision.Reopened));
+
+            // Now the itinerary is editable again.
+            await AddLeg(scope.ServiceProvider, db, empUser, tripId, "Paris", "France");
+            Assert.Equal(2, await db.Destinations.CountAsync(d => d.TripId == tripId));
+        }
+        finally
+        {
+            await sp.DisposeAsync();
+            Cleanup(dbFile);
+        }
+    }
+
     private async Task AddLeg(IServiceProvider sp, AppDbContext db, ClaimsPrincipal user,
         int tripId, string city, string country)
     {

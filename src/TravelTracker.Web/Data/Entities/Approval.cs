@@ -6,7 +6,12 @@ namespace TravelTracker.Web.Data.Entities;
 public enum ApprovalDecision
 {
     Approved = 0,
-    Rejected = 1
+    Rejected = 1,
+    // Not an approver decision: recorded when a traveler reopens an already-Approved
+    // trip to revise its itinerary, invalidating the prior sign-off. Stored in the
+    // same history log so the trail reads approve -> reopen -> resubmit -> re-approve.
+    // ApproverId holds the acting user (traveler/arranger), not necessarily an approver.
+    Reopened = 2
 }
 
 // One immutable row per approval decision, forming the trip's approval history.

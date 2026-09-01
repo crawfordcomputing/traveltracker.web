@@ -1,0 +1,82 @@
+@page
+@model TravelTracker.Web.Pages.Admin.Notifications.IndexModel
+@using TravelTracker.Web.Data.Entities
+@{ ViewData["Title"] = "Notification log"; }
+
+<h1 class="h3 mb-2">Notification log</h1>
+<p class="text-muted">
+    Outcome of every outbound email. For deeper diagnostics (stack traces, request
+    logs) use Application Insights.
+</p>
+
+<div class="d-flex gap-2 mb-3">
+    <span class="badge bg-success">Sent (24h): @Model.SentCount24h</span>
+    <span class="badge bg-danger">Failed (24h): @Model.FailedCount24h</span>
+</div>
+
+<div class="btn-group btn-group-sm mb-3" role="group" aria-label="Filter by status">
+    <a class="btn @(Model.Status is null ? "btn-primary" : "btn-outline-secondary")"
+       asp-route-status="" asp-route-page="1">All</a>
+    <a class="btn @(Model.Status == NotificationStatus.Sent ? "btn-primary" : "btn-outline-secondary")"
+       asp-route-status="@NotificationStatus.Sent" asp-route-page="1">Sent</a>
+    <a class="btn @(Model.Status == NotificationStatus.Failed ? "btn-primary" : "btn-outline-secondary")"
+       asp-route-status="@NotificationStatus.Failed" asp-route-page="1">Failed</a>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="alert alert-info">No notifications recorded yet.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th class="text-nowrap">When (UTC)</th>
+                    <th>Recipient</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var n in Model.Items)
+                {
+                    <tr>
+                        <td class="text-nowrap">@n.SentAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@n.Recipient</td>
+                        <td>@n.Subject</td>
+                        <td>
+                            @if (n.Status == NotificationStatus.Sent)
+                            {
+                                <span class="badge bg-success">Sent</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Failed</span>
+                            }
+                        </td>
+                        <td class="text-danger small">@n.Error</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <nav class="d-flex justify-content-between">
+        @if (Model.PageNumber > 1)
+        {
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-route-status="@Model.Status" asp-route-page="@(Model.PageNumber - 1)">&laquo; Previous</a>
+        }
+        else { <span></span> }
+
+        @if (Model.HasNext)
+        {
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-route-status="@Model.Status" asp-route-page="@(Model.PageNumber + 1)">Next &raquo;</a>
+        }
+        else { <span></span> }
+    </nav>
+}
