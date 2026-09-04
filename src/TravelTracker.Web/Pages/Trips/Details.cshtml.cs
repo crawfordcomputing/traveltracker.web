@@ -306,8 +306,7 @@ public class DetailsModel : TripPageModel
         // Reopening an Approved trip (Approved -> Draft "Revise itinerary") invalidates
         // the approver's sign-off. Record it in the same history log the approve/reject
         // decisions use, so the trail shows the approval was deliberately reopened.
-        var wasApproved = TripStatusRules.ItineraryEditable(Trip.Status) == false
-                          && target == TripStatus.Draft
+        var wasApproved = target == TripStatus.Draft
                           && Trip.Status is TripStatus.Approved or TripStatus.Planned;
 
         Trip.Status = target;

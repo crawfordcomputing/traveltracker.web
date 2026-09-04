@@ -16,9 +16,14 @@ namespace TravelTracker.Web.Services;
 //
 // The container is created if missing and is PRIVATE (no public access); receipts
 // are streamed only through the authorized Receipt handler, never a public URL.
-public sealed class AzureBlobReceiptStorage : IReceiptStorage
+// Creation happens lazily and asynchronously on first use rather than as a blocking
+// network call inside the singleton constructor (which would stall whichever request
+// thread first resolves the service).
+public sealed class AzureBlobReceiptStorage : IReceiptStorage, IDisposable
 {
     private readonly BlobContainerClient _container;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private volatile bool _initialized;
 
     public AzureBlobReceiptStorage(IConfiguration config)
     {
@@ -30,7 +35,25 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
                 "Storage:Blob:ConnectionString is required. Use UseDevelopmentStorage=true for Azurite in dev.");
 
         _container = new BlobContainerClient(connectionString, containerName);
-        _container.CreateIfNotExists(PublicAccessType.None);
+    }
+
+    // Singleton: the DI container disposes it at shutdown.
+    public void Dispose() => _initLock.Dispose();
+
+    private async ValueTask EnsureContainerAsync(CancellationToken ct)
+    {
+        if (_initialized) return;
+        await _initLock.WaitAsync(ct);
+        try
+        {
+            if (_initialized) return;
+            await _container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: ct);
+            _initialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     public async Task<string> SaveAsync(
@@ -45,6 +68,7 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
         var now = DateTimeOffset.UtcNow;
         var key = $"{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
 
+        await EnsureContainerAsync(ct);
         var blob = _container.GetBlobClient(key);
         await blob.UploadAsync(
             content,
@@ -56,6 +80,7 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
     public async Task<ReceiptContent?> OpenReadAsync(string key, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(key)) return null;
+        await EnsureContainerAsync(ct);
         var blob = _container.GetBlobClient(key);
         try
         {
@@ -74,6 +99,7 @@ public sealed class AzureBlobReceiptStorage : IReceiptStorage
     public async Task DeleteAsync(string key, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(key)) return;
+        await EnsureContainerAsync(ct);
         await _container.DeleteBlobIfExistsAsync(key, cancellationToken: ct);
     }
 }

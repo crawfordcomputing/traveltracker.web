@@ -58,12 +58,19 @@ public class IndexModel : PageModel
         };
 
         var users = await q.ToListAsync();
+
+        // One query for every user's roles instead of GetRolesAsync per row (N+1).
+        var rolesByUser = (await _db.UserRoles
+                .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
+                .ToListAsync())
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Name).OrderBy(n => n)));
+
         foreach (var u in users)
         {
-            var roles = await _userManager.GetRolesAsync(u);
             var deptDefault = u.ApproverId == null ? u.Department?.DefaultApprover?.DisplayName : null;
             Users.Add(new Row(u.Id, u.Email ?? "", u.DisplayName,
-                u.Department?.Name, string.Join(", ", roles), u.IsActive,
+                u.Department?.Name, rolesByUser.GetValueOrDefault(u.Id, ""), u.IsActive,
                 u.Approver?.DisplayName, deptDefault));
         }
 
