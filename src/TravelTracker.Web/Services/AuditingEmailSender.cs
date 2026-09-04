@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
@@ -64,6 +65,9 @@ public class AuditingEmailSender : IEmailSender
         }
         catch (Exception ex)
         {
+            // Detach the failed row so it is not retried by (and does not fail) any
+            // later SaveChangesAsync on this request-scoped context.
+            _db.Entry(log).State = EntityState.Detached;
             _logger.LogError(ex,
                 "Failed to persist NotificationLog for {Recipient} ({Status}).",
                 log.Recipient, log.Status);

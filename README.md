@@ -13,7 +13,7 @@ App Service via GitHub Actions with minimal fuss.
 |---------|--------|---------------------------|
 | Web | ASP.NET Core 10, Razor Pages | — |
 | Data | EF Core, **SQL Server** | LocalDB for dev/test, Azure SQL in production (connection string only) |
-| Receipts | **Local disk** default | `Storage:Provider=Blob` (M3) |
+| Receipts | **Azure Blob** only | `Storage:Blob:ConnectionString` (Azurite `UseDevelopmentStorage=true` in dev) |
 | Auth | ASP.NET Core Identity (local accounts) | `Auth:EnableEntraId=true` (Entra ID) |
 | CI/CD | GitHub Actions | `.github/workflows/deploy.yml` |
 | Infra | Bicep (optional) | `infra/main.bicep` |
@@ -122,7 +122,7 @@ variables (use `__` as the section separator, e.g. `ConnectionStrings__Default`)
 ```jsonc
 {
   "ConnectionStrings": { "Default": "" },      // required; set per environment
-  "Storage": { "Provider": "LocalDisk", "LocalPath": "App_Data/receipts" },
+  "Storage": { "Blob": { "ConnectionString": "UseDevelopmentStorage=true" } },  // Azurite in dev
   "Auth": { "EnableEntraId": false },
   "Seed": { "AdminEmail": "admin@example.com", "AdminPassword": "Admin123!" }
 }
@@ -198,7 +198,7 @@ maps to `ConnectionStrings:Default`). Anything here can instead be a
 | App setting(s) | Required when |
 |----------------|---------------|
 | `Auth__EntraId__TenantId`, `Auth__EntraId__ClientId`, `Auth__EntraId__ClientSecret` | `Auth__EnableEntraId=true` (Entra ID SSO). |
-| `Storage__Blob__ConnectionString` | `Storage__Provider=AzureBlob` (receipts in Blob storage). |
+| `Storage__Blob__ConnectionString` | Always (receipts are Blob-only; use `UseDevelopmentStorage=true` for Azurite in dev). |
 | `Email__Smtp__Host` **and** `Email__FromAddress` (or `Email__Smtp__Username`) | `Email__Provider=Smtp` (real outbound email). |
 
 > **Heads-up:** `appsettings.json` ships `Auth__EnableEntraId=true`. On a fresh
@@ -218,10 +218,8 @@ maps to `ConnectionStrings:Default`). Anything here can instead be a
 
 | App setting | Default | Notes |
 |-------------|---------|-------|
-| `Storage__Provider` | `LocalDisk` | `LocalDisk` or `AzureBlob`. |
-| `Storage__LocalPath` | `App_Data/receipts` | On Linux App Service use a path under `/home` (e.g. `/home/App_Data/receipts`) so files survive restarts. |
 | `Storage__MaxReceiptMb` | `10` | Max upload size per receipt. |
-| `Storage__Blob__Container` | `receipts` | Blob container name (used when provider is `AzureBlob`). |
+| `Storage__Blob__Container` | `receipts` | Blob container name. |
 
 **Expenses**
 
@@ -238,7 +236,7 @@ maps to `ConnectionStrings:Default`). Anything here can instead be a
 | `Auth__EnableEntraId` | `true` (as shipped) | Master switch for Entra ID SSO. |
 | `Auth__RequireConfirmedEmail` | `false` | Require a confirmed email before sign-in. |
 | `Auth__EntraId__Instance` | `https://login.microsoftonline.com/` | Authority host. |
-| `Auth__EntraId__SyncRolesOnLogin` | `true` | Sync group-mapped roles on each external login. |
+| `Auth__EntraId__SyncRolesOnLogin` | `false` | Sync group-mapped roles on each external login. Off by default: the app is the source of truth for roles. |
 | `Auth__EntraId__RoleClaimPassthrough` | `true` | Honor role claims sent in the token. |
 | `Auth__EntraId__GroupClaimType` | `groups` | Claim type that carries group IDs. |
 | `Auth__EntraId__GroupRoleMappings__{n}__GroupId` / `__Role` | (none) | Indexed array mapping an Entra group to an app role, e.g. `Auth__EntraId__GroupRoleMappings__0__GroupId` + `Auth__EntraId__GroupRoleMappings__0__Role`. |

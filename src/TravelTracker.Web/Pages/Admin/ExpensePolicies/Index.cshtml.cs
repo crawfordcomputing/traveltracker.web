@@ -78,19 +78,21 @@ public class IndexModel : PageModel
     }
 
     // Inline per-row edit of the amount (and note). Category is fixed once set.
-    public async Task<IActionResult> OnPostUpdateAsync(int id, decimal capAmount, string? notes)
+    // capAmount is nullable on purpose: a blank or non-numeric field must be rejected,
+    // not bound to 0 (which would flag every expense in the category).
+    public async Task<IActionResult> OnPostUpdateAsync(int id, decimal? capAmount, string? notes)
     {
         var policy = await _db.ExpensePolicies.FindAsync(id);
         if (policy is null) return RedirectToPage();
 
-        if (capAmount < 0 || capAmount > 1_000_000)
+        if (capAmount is null || capAmount < 0 || capAmount > 1_000_000)
         {
-            ModelState.AddModelError(string.Empty, "Cap amount must be between 0 and 1,000,000.");
+            ModelState.AddModelError(string.Empty, "Cap amount must be a number between 0 and 1,000,000.");
             await LoadAsync();
             return Page();
         }
 
-        policy.CapAmount = capAmount;
+        policy.CapAmount = capAmount.Value;
         policy.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         policy.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();

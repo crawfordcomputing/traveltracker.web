@@ -27,6 +27,13 @@ param sqlAdminLogin string = 'ttadmin'
 @secure()
 param sqlAdminPassword string = ''
 
+@description('Azure Storage connection string for receipt blobs (Storage:Blob:ConnectionString). Receipts are Blob-only; the app cannot serve receipts without this.')
+@secure()
+param storageConnectionString string = ''
+
+@description('Blob container name for receipts.')
+param storageContainer string = 'receipts'
+
 var planName = '${appName}-plan'
 var sqlServerName = '${appName}-sql'
 var sqlDbName = 'traveltracker'
@@ -95,12 +102,15 @@ resource web 'Microsoft.Web/sites@2023-12-01' = {
           value: deploySql ? sqlConnectionString : ''
         }
         {
-          name: 'Storage__Provider'
-          value: 'LocalDisk'
+          // Receipt storage is Azure Blob only (local disk was removed: App Service
+          // wipes wwwroot on deploy). Supply the connection string here or swap in a
+          // Key Vault reference; the Expenses pages fail until it is set.
+          name: 'Storage__Blob__ConnectionString'
+          value: storageConnectionString
         }
         {
-          name: 'Storage__LocalPath'
-          value: '/home/App_Data/receipts'
+          name: 'Storage__Blob__Container'
+          value: storageContainer
         }
       ]
     }
