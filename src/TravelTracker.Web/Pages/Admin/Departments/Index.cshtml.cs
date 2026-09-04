@@ -67,10 +67,16 @@ public class IndexModel : PageModel
         if (dept is null) return NotFound();
 
         approverId = string.IsNullOrWhiteSpace(approverId) ? null : approverId;
-        if (approverId is not null && await _userManager.FindByIdAsync(approverId) is null)
+        if (approverId is not null)
         {
-            TempData["Error"] = "Unknown approver.";
-            return RedirectToPage();
+            // Mirror the select list: only real, active users may be a default approver
+            // (a forged post must not route trips to a deactivated account).
+            var approver = await _userManager.FindByIdAsync(approverId);
+            if (approver is null || !approver.IsActive)
+            {
+                TempData["Error"] = "Unknown or inactive approver.";
+                return RedirectToPage();
+            }
         }
 
         dept.DefaultApproverId = approverId;

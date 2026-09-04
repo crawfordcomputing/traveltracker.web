@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -358,10 +359,10 @@ public class DetailsModel : TripPageModel
 
         await TrySendAsync(approver.Email,
             $"Trip awaiting your approval: {Trip.Purpose}",
-            $"<p>{Trip.Traveler?.DisplayName} submitted a trip for your approval.</p>" +
-            $"<p><strong>{Trip.Purpose}</strong><br>" +
+            $"<p>{H(Trip.Traveler?.DisplayName)} submitted a trip for your approval.</p>" +
+            $"<p><strong>{H(Trip.Purpose)}</strong><br>" +
             $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}</p>" +
-            $"<p><a href=\"{approvalUrl}\">Review and approve or reject this trip</a></p>");
+            $"<p><a href=\"{H(approvalUrl)}\">Review and approve or reject this trip</a></p>");
 
         TempData["ExpenseInfo"] = $"Submitted to {approver.DisplayName} for approval.";
         return RedirectToPage("Details", new { id });
@@ -413,9 +414,9 @@ public class DetailsModel : TripPageModel
         var verb = decision == ApprovalDecision.Approved ? "approved" : "rejected";
         await TrySendAsync(Trip.Traveler?.Email,
             $"Your trip was {verb}: {Trip.Purpose}",
-            $"<p>Your trip <strong>{Trip.Purpose}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
-            $"was {verb} by {EffectiveApprover(Trip)?.DisplayName ?? "your approver"}.</p>" +
-            (comment is null ? "" : $"<p>Comment: {comment}</p>"));
+            $"<p>Your trip <strong>{H(Trip.Purpose)}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
+            $"was {verb} by {H(EffectiveApprover(Trip)?.DisplayName ?? "your approver")}.</p>" +
+            (comment is null ? "" : $"<p>Comment: {H(comment)}</p>"));
 
         TempData["ExpenseInfo"] = $"Trip {verb}.";
         return RedirectToPage("Details", new { id });
@@ -448,6 +449,11 @@ public class DetailsModel : TripPageModel
         if (id is null) return null;
         return t.ApproverId == id ? t.Approver : t.Department?.DefaultApprover;
     }
+
+    // HTML-encode user-supplied text (purpose, display names, comments) before it is
+    // interpolated into an email body, so nobody can inject markup or links into
+    // notifications. Subjects are plain text and need no encoding.
+    private static string H(string? text) => HtmlEncoder.Default.Encode(text ?? string.Empty);
 
     // Email is best-effort: an approval is already persisted, so a mail outage must
     // not fail the request. Log and move on.

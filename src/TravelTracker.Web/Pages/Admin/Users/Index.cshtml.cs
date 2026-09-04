@@ -87,9 +87,12 @@ public class IndexModel : PageModel
             TempData["Error"] = "Choose an approver to assign.";
             return RedirectToPage(new { Filter, Sort });
         }
-        if (await _userManager.FindByIdAsync(bulkApproverId) is null)
+        // Mirror the select list: only real, active users may be assigned as an
+        // approver (a forged post must not route trips to a deactivated account).
+        var approver = await _userManager.FindByIdAsync(bulkApproverId);
+        if (approver is null || !approver.IsActive)
         {
-            TempData["Error"] = "Unknown approver.";
+            TempData["Error"] = "Unknown or inactive approver.";
             return RedirectToPage(new { Filter, Sort });
         }
 
@@ -112,7 +115,7 @@ public class IndexModel : PageModel
             selected[uid].ApproverId = bulkApproverId;
         if (toAssign.Count > 0) await _db.SaveChangesAsync();
 
-        var approverName = (await _userManager.FindByIdAsync(bulkApproverId))?.DisplayName ?? "the approver";
+        var approverName = approver.DisplayName;
         var msg = $"Assigned {approverName} to {toAssign.Count} user{(toAssign.Count == 1 ? "" : "s")}.";
         if (skipped.Count > 0)
         {
