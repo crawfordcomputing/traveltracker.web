@@ -19,13 +19,6 @@ using Xunit;
 
 namespace TravelTracker.Tests;
 
-// No-op email sender for the register tests — the confirmation link send is a
-// side effect the handler logic under test doesn't depend on.
-file sealed class NoopEmailSender : IEmailSender
-{
-    public Task SendAsync(string recipient, string subject, string htmlBody) => Task.CompletedTask;
-}
-
 // Drives the real Account/Register handlers across every registration mode and
 // both the self-serve and invite-redemption paths, including the sign-in success
 // tails (full Identity cookie auth is wired so SignInAsync executes).
@@ -73,7 +66,7 @@ public class RegisterTests
         var ac = new ActionContext(http, new RouteData(), new PageActionDescriptor(), new ModelStateDictionary());
         var db = sp.GetRequiredService<AppDbContext>();
         var confirmations = new EmailConfirmationService(
-            sp.GetRequiredService<UserManager<AppUser>>(), new NoopEmailSender());
+            sp.GetRequiredService<UserManager<AppUser>>(), new NoopEmailTemplateService());
         return new RegisterModel(
             sp.GetRequiredService<UserManager<AppUser>>(),
             sp.GetRequiredService<SignInManager<AppUser>>(),

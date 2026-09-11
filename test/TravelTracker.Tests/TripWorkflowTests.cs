@@ -70,7 +70,7 @@ public class TripWorkflowTests
     {
         var (ctx, temp) = PageCtx(sp, user);
         return new DetailsModel(db, new TravelTracker.Web.Domain.TeamAccess(db),
-            new NoopEmail(), NullLogger<DetailsModel>.Instance)
+            new NoopEmailTemplateService(), NullLogger<DetailsModel>.Instance)
         {
             PageContext = ctx,
             TempData = temp,
@@ -414,11 +414,5 @@ public class TripWorkflowTests
         public bool IsLocalUrl(string? url) => true;
         public string? Link(string? routeName, object? values) => "http://localhost/";
         public string? RouteUrl(UrlRouteContext routeContext) => "http://localhost/Trips/Details/1";
-    }
-
-    // Approval tests assert on persisted rows, not on email, so a no-op is enough.
-    private sealed class NoopEmail : IEmailSender
-    {
-        public Task SendAsync(string recipient, string subject, string htmlBody) => Task.CompletedTask;
     }
 }

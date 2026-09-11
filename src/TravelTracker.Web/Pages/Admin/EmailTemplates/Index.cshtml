@@ -1,0 +1,66 @@
+@page
+@model TravelTracker.Web.Pages.Admin.EmailTemplates.IndexModel
+@{ ViewData["Title"] = "Email templates"; }
+
+<h1 class="h3 mb-3">Email templates</h1>
+<p class="text-muted">
+    Change the wording of outbound emails without a deploy. Each email has an
+    <strong>Any</strong> variant plus optional <strong>Internal</strong> and
+    <strong>External</strong> variants. A send uses the variant for the recipient's
+    audience, then <strong>Any</strong>, then the built-in default.
+</p>
+
+<div class="alert alert-light border small">
+    @if (Model.InternalDomains.Count == 0)
+    {
+        <span>No internal domains are configured, so every recipient gets the <strong>Any</strong> variant.
+        Set <code>Email:InternalDomains</code> to enable internal/external wording.</span>
+    }
+    else
+    {
+        <span>Internal domains: <code>@string.Join(", ", Model.InternalDomains)</code>
+        @if (Model.UsingFallbackDomains)
+        {
+            <span class="text-muted">(from <code>Auth:Registration:AllowedDomains</code>; set <code>Email:InternalDomains</code> to override)</span>
+        }
+        Everyone else is External.</span>
+    }
+</div>
+
+<div class="table-responsive">
+<table class="table align-middle">
+    <caption class="visually-hidden">Email templates and which variants are customized</caption>
+    <thead>
+        <tr>
+            <th scope="col">Email</th>
+            @foreach (var a in IndexModel.Audiences)
+            {
+                <th scope="col" class="text-center">@a</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model.Rows)
+    {
+        <tr>
+            <td>
+                <div class="fw-semibold">@r.Title</div>
+                <div class="small text-muted">@r.Description</div>
+            </td>
+            @foreach (var a in IndexModel.Audiences)
+            {
+                <td class="text-center">
+                    <a asp-page="Edit" asp-route-key="@r.Key" asp-route-audience="@a"
+                       class="badge text-decoration-none @(r.Customized[a] ? "bg-primary" : "bg-light text-dark border")"
+                       aria-label="Edit @r.Title (@a)">
+                        @(r.Customized[a] ? "Customized" : "Default")
+                    </a>
+                </td>
+            }
+        </tr>
+    }
+    </tbody>
+</table>
+</div>
+
+<a asp-page="/Admin/Index" class="btn btn-link">Back to admin</a>

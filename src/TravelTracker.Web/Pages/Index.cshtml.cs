@@ -17,10 +17,6 @@ public class IndexModel : PageModel
         _team = team;
     }
 
-    public string DbProvider { get; private set; } = "SQL Server";
-    public int DepartmentCount { get; private set; }
-    public int UserCount { get; private set; }
-
     public bool ShowDashboard { get; private set; }
     public bool ScopeIsAll { get; private set; }
     // True when the dashboard spans travelers other than the viewer (Admin, or a
@@ -37,9 +33,6 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        DepartmentCount = await _db.Departments.CountAsync();
-        UserCount = await _db.Users.CountAsync();
-
         if (User.Identity?.IsAuthenticated != true) return;
 
         ShowDashboard = true;

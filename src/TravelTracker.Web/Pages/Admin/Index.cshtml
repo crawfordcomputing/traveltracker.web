@@ -82,6 +82,16 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
+                <h2 class="h5">Email templates</h2>
+                <p class="text-muted mb-1">@Model.EmailTemplateCount customized template(s)</p>
+                <p class="text-muted mb-2">Wording for outbound emails, with internal/external variants.</p>
+                <a asp-page="/Admin/EmailTemplates/Index" class="btn btn-primary btn-sm">Manage email templates</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
                 <h2 class="h5">Notifications</h2>
                 <p class="text-muted mb-2">Outbound email delivery outcomes.</p>
                 <a asp-page="/Admin/Notifications/Index" class="btn btn-primary btn-sm">View notification log</a>

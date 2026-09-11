@@ -43,6 +43,22 @@ public class AuthorizationTests : IClassFixture<WebApplicationFactory<Program>>,
         Assert.Contains("/Account/Login", resp.Headers.Location?.ToString());
     }
 
+    // ADR-0005: the template editor lives under /Admin, so it inherits RequireAdmin.
+    [Theory]
+    [InlineData("/Admin/EmailTemplates")]
+    [InlineData("/Admin/EmailTemplates/Edit?key=PasswordReset&audience=Any")]
+    public async Task Email_Template_Pages_Require_Sign_In(string url)
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var resp = await client.GetAsync(url);
+        Assert.Equal(HttpStatusCode.Redirect, resp.StatusCode);
+        Assert.Contains("/Account/Login", resp.Headers.Location?.ToString());
+    }
+
     [Fact]
     public async Task Login_Page_Is_Publicly_Accessible()
     {

@@ -38,6 +38,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
 
     // Every newly inserted Trip gets its reference code here, so Create, Clone, and
     // both seeders are covered without any caller knowing about codes (ADR-0004).
@@ -283,6 +284,19 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
                 new ExpensePolicy { Id = 3, Category = ExpenseCategory.Entertainment, CapAmount = 150m, UpdatedAt = SeedStamp },
                 new ExpensePolicy { Id = 4, Category = ExpenseCategory.GroundTransport, CapAmount = 100m, UpdatedAt = SeedStamp }
             );
+        });
+
+        builder.Entity<EmailTemplate>(e =>
+        {
+            // One override per (email, audience). Defaults are not seeded — a
+            // missing row means "use the built-in default". See ADR-0005.
+            e.HasIndex(x => new { x.Key, x.Audience }).IsUnique();
+
+            // Restrict on the user FK, matching every other AppUser FK.
+            e.HasOne(x => x.UpdatedBy)
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedById)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<MileageRate>(e =>

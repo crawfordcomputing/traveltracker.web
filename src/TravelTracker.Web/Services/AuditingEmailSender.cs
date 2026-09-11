@@ -31,18 +31,25 @@ public class AuditingEmailSender : IEmailSender
     // Exposed so the Email:Provider selection stays unit-testable through the decorator.
     public IEmailSender Inner => _inner;
 
-    public async Task SendAsync(string recipient, string subject, string htmlBody)
+    public Task SendAsync(string recipient, string subject, string htmlBody)
+        => SendAsync(recipient, subject, htmlBody, origin: null);
+
+    public async Task SendAsync(string recipient, string subject, string htmlBody, EmailOrigin? origin)
     {
         var log = new NotificationLog
         {
             SentAt = DateTimeOffset.UtcNow,
             Recipient = recipient,
-            Subject = subject,
+            // Rendered subjects can outgrow the 256-char template limit once tokens
+            // expand; clip rather than lose the audit row to a column-length error.
+            Subject = Truncate(subject, 256),
+            TemplateKey = origin?.Key,
+            Audience = origin?.Audience,
         };
 
         try
         {
-            await _inner.SendAsync(recipient, subject, htmlBody);
+            await _inner.SendAsync(recipient, subject, htmlBody, origin);
             log.Status = NotificationStatus.Sent;
         }
         catch (Exception ex)

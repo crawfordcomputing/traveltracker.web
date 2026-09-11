@@ -31,4 +31,9 @@ public class NotificationLog
     // Exception message on failure; null on success. Message only, never the body.
     [StringLength(2000)]
     public string? Error { get; set; }
+
+    // Which template produced this email and which audience variant was chosen
+    // (ADR-0005). Null for sends that bypass the template layer (e.g. tests).
+    public EmailTemplateKey? TemplateKey { get; set; }
+    public EmailAudience? Audience { get; set; }
 }

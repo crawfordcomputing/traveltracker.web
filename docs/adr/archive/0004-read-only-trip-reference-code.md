@@ -1,6 +1,6 @@
 # ADR-0004: Read-Only Trip Reference Code (Year + Random)
 
-**Status:** Accepted (implemented 2026-09-11)
+**Status:** Accepted (implemented 2026-09-11). Archived.
 **Date:** 2026-09-11
 **Deciders:** Project maintainer(s)
 

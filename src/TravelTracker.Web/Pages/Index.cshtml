@@ -78,25 +78,3 @@ else
         </div>
     </div>
 }
-
-<div class="row justify-content-center mt-2">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">System status</div>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>Database provider</span><span class="badge bg-secondary">@Model.DbProvider</span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>Departments seeded</span><span>@Model.DepartmentCount</span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>Users seeded</span><span>@Model.UserCount</span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>Health endpoint</span><span><a href="/healthz">/healthz</a></span>
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>

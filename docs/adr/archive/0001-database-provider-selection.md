@@ -1,8 +1,10 @@
 # ADR-0001: Support Selectable Database Provider (SQLite or SQL Server)
 
-**Status:** Proposed
+**Status:** Rejected (2026-09-11). Archived.
 **Date:** 2026-08-30
 **Deciders:** Project maintainer(s)
+
+> **Outcome:** Not pursued. Travel Tracker stays SQL Server only. Kept for the record of options considered.
 
 ## Context
 

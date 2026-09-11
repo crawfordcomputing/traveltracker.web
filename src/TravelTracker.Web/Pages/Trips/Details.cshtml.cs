@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -7,16 +6,16 @@ using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
-using TravelTracker.Web.Services;
+using TravelTracker.Web.Services.Email;
 
 namespace TravelTracker.Web.Pages.Trips;
 
 public class DetailsModel : TripPageModel
 {
-    private readonly IEmailSender _email;
+    private readonly IEmailTemplateService _email;
     private readonly ILogger<DetailsModel> _logger;
 
-    public DetailsModel(AppDbContext db, TeamAccess team, IEmailSender email, ILogger<DetailsModel> logger)
+    public DetailsModel(AppDbContext db, TeamAccess team, IEmailTemplateService email, ILogger<DetailsModel> logger)
         : base(db, team)
     {
         _email = email;
@@ -356,13 +355,9 @@ public class DetailsModel : TripPageModel
         var approvalUrl = Url.Page("/Trips/Details", pageHandler: null,
             values: new { id }, protocol: Request.Scheme);
 
-        await TrySendAsync(approver.Email,
-            $"Trip awaiting your approval: {Trip.Purpose}",
-            $"<p>{H(Trip.Traveler?.DisplayName)} submitted a trip for your approval.</p>" +
-            $"<p><strong>{H(Trip.Purpose)}</strong><br>" +
-            $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}<br>" +
-            $"Trip code: {H(Trip.Code)}</p>" +
-            $"<p><a href=\"{H(approvalUrl)}\">Review and approve or reject this trip</a></p>");
+        await TrySendAsync(EmailTemplateKey.TripSubmitted, approver.Email, TripTokens(approver.DisplayName,
+            ("Traveler.Name", Trip.Traveler?.DisplayName),
+            ("ApprovalLink", approvalUrl)));
 
         TempData["ExpenseInfo"] = $"Submitted to {approver.DisplayName} for approval.";
         return RedirectToPage("Details", new { id });
@@ -412,12 +407,15 @@ public class DetailsModel : TripPageModel
         await Db.SaveChangesAsync();
 
         var verb = decision == ApprovalDecision.Approved ? "approved" : "rejected";
-        await TrySendAsync(Trip.Traveler?.Email,
-            $"Your trip was {verb}: {Trip.Purpose}",
-            $"<p>Your trip <strong>{H(Trip.Purpose)}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
-            $"was {verb} by {H(EffectiveApprover(Trip)?.DisplayName ?? "your approver")}.</p>" +
-            $"<p>Trip code: {H(Trip.Code)}</p>" +
-            (comment is null ? "" : $"<p>Comment: {H(comment)}</p>"));
+        var tripUrl = Url.Page("/Trips/Details", pageHandler: null,
+            values: new { id }, protocol: Request.Scheme);
+        await TrySendAsync(
+            decision == ApprovalDecision.Approved ? EmailTemplateKey.TripApproved : EmailTemplateKey.TripRejected,
+            Trip.Traveler?.Email,
+            TripTokens(Trip.Traveler?.DisplayName,
+                ("Approver.Name", EffectiveApprover(Trip)?.DisplayName ?? "your approver"),
+                (EmailTemplateTokens.Comment, comment),
+                ("TripLink", tripUrl)));
 
         TempData["ExpenseInfo"] = $"Trip {verb}.";
         return RedirectToPage("Details", new { id });
@@ -451,23 +449,34 @@ public class DetailsModel : TripPageModel
         return t.ApproverId == id ? t.Approver : t.Department?.DefaultApprover;
     }
 
-    // HTML-encode user-supplied text (purpose, display names, comments) before it is
-    // interpolated into an email body, so nobody can inject markup or links into
-    // notifications. Subjects are plain text and need no encoding.
-    private static string H(string? text) => HtmlEncoder.Default.Encode(text ?? string.Empty);
+    // Token values for the trip emails. The template renderer HTML-encodes every
+    // value, so user-supplied text (purpose, names, comments) can't inject markup.
+    private Dictionary<string, string?> TripTokens(string? recipientName, params (string Key, string? Value)[] extra)
+    {
+        var tokens = new Dictionary<string, string?>
+        {
+            [EmailTemplateTokens.RecipientName] = recipientName,
+            ["Trip.Code"] = Trip.Code,
+            ["Trip.Purpose"] = Trip.Purpose,
+            ["Trip.Dates"] = EmailTemplateTokens.TripDates(Trip.StartDate, Trip.EndDate),
+        };
+        foreach (var (k, v) in extra) tokens[k] = v;
+        return tokens;
+    }
 
     // Email is best-effort: an approval is already persisted, so a mail outage must
     // not fail the request. Log and move on.
-    private async Task TrySendAsync(string? recipient, string subject, string htmlBody)
+    private async Task TrySendAsync(EmailTemplateKey key, string? recipient,
+        IReadOnlyDictionary<string, string?> tokens)
     {
         if (string.IsNullOrWhiteSpace(recipient)) return;
         try
         {
-            await _email.SendAsync(recipient, subject, htmlBody);
+            await _email.SendAsync(key, recipient, tokens);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Approval notification email to {Recipient} failed.", recipient);
+            _logger.LogWarning(ex, "{Key} notification email to {Recipient} failed.", key, recipient);
         }
     }
 

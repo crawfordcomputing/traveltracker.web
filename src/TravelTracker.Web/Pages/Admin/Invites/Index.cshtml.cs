@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
+using TravelTracker.Web.Services.Email;
 
 namespace TravelTracker.Web.Pages.Admin.Invites;
 
@@ -14,11 +15,16 @@ public class IndexModel : PageModel
 {
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
+    private readonly IEmailTemplateService _email;
+    private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(AppDbContext db, UserManager<AppUser> userManager)
+    public IndexModel(AppDbContext db, UserManager<AppUser> userManager,
+        IEmailTemplateService email, ILogger<IndexModel> logger)
     {
         _db = db;
         _userManager = userManager;
+        _email = email;
+        _logger = logger;
     }
 
     [BindProperty] public InputModel Input { get; set; } = new();
@@ -26,7 +32,11 @@ public class IndexModel : PageModel
     public SelectList RoleOptions { get; private set; } = default!;
 
     public record Row(int Id, string Email, string Role, string? Department,
-        DateTimeOffset ExpiresAt, DateTimeOffset? AcceptedAt, bool Expired);
+        DateTimeOffset ExpiresAt, DateTimeOffset? AcceptedAt, bool Expired)
+    {
+        // Only open (unaccepted, unexpired) invites can be re-sent.
+        public bool CanResend => AcceptedAt is null && !Expired;
+    }
     public List<Row> Invites { get; private set; } = new();
 
     public class InputModel
@@ -89,13 +99,64 @@ public class IndexModel : PageModel
         _db.Invitations.Add(invite);
         await _db.SaveChangesAsync();
 
-        // The raw token exists only here — surface the link once for the admin to
-        // copy. It's never recoverable after this render.
+        await SendAndSurfaceAsync(invite, token);
+        return RedirectToPage();
+    }
+
+    // Re-sends an open invite. Only the token's hash is stored, so the original link
+    // can't be rebuilt: a fresh token is minted and replaces the hash (the old link
+    // stops working), while ExpiresAt is left untouched. See ADR-0005.
+    public async Task<IActionResult> OnPostResendAsync(int id)
+    {
+        var invite = await _db.Invitations.FindAsync(id);
+        if (invite is null || !invite.IsRedeemable(DateTimeOffset.UtcNow))
+            return RedirectToPage();
+
+        var token = InviteTokens.NewToken();
+        invite.TokenHash = InviteTokens.Hash(token);
+        await _db.SaveChangesAsync();
+
+        await SendAndSurfaceAsync(invite, token);
+        return RedirectToPage();
+    }
+
+    // Emails the invite link (best-effort) and always surfaces it on screen too.
+    // The raw token exists only here — it's never recoverable after this render, so
+    // the banner stays as the fallback when delivery fails or the admin would rather
+    // hand the link over another way.
+    private async Task SendAndSurfaceAsync(Invitation invite, string token)
+    {
         var link = Url.Page("/Account/Register", pageHandler: null,
             values: new { token }, protocol: Request.Scheme);
-        TempData["InviteEmail"] = email;
+
+        var inviter = await _userManager.GetUserAsync(User);
+        var sent = await TrySendAsync(invite.Email, new Dictionary<string, string?>
+        {
+            ["InviteLink"] = link,
+            ["Invite.Role"] = invite.Role,
+            ["Invite.ExpiresAt"] = EmailTemplateTokens.InviteExpiry(invite.ExpiresAt),
+            ["InvitedBy.Name"] = string.IsNullOrWhiteSpace(inviter?.DisplayName) ? "An administrator" : inviter.DisplayName,
+        });
+
+        TempData["InviteEmail"] = invite.Email;
         TempData["InviteLink"] = link;
-        return RedirectToPage();
+        TempData["InviteEmailed"] = sent;
+    }
+
+    // Invite email is best-effort like the trip notifications: the invite row is
+    // already saved and the link is on screen, so a mail outage must not fail the request.
+    private async Task<bool> TrySendAsync(string recipient, IReadOnlyDictionary<string, string?> tokens)
+    {
+        try
+        {
+            await _email.SendAsync(EmailTemplateKey.Invitation, recipient, tokens);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Invitation email to {Recipient} failed.", recipient);
+            return false;
+        }
     }
 
     public async Task<IActionResult> OnPostRevokeAsync(int id)

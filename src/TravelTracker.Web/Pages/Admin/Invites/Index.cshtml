@@ -7,8 +7,15 @@
 @if (TempData["InviteLink"] is string link)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>Invite created</strong> for <code>@TempData["InviteEmail"]</code>.
-        Send them this one-time link:
+        <strong>Invite ready</strong> for <code>@TempData["InviteEmail"]</code>.
+        @if (TempData["InviteEmailed"] is true)
+        {
+            <span>We emailed them this one-time link. You can also copy it:</span>
+        }
+        else
+        {
+            <span>The email couldn't be sent. Send them this one-time link yourself:</span>
+        }
         <div class="input-group mt-2">
             <input class="form-control user-select-all" value="@link" readonly />
         </div>
@@ -80,6 +87,13 @@
                         }
                     </td>
                     <td class="text-end">
+                        @if (i.CanResend)
+                        {
+                            <form method="post" asp-page-handler="Resend" asp-route-id="@i.Id"
+                                  onsubmit="return confirm('Resend invite to @i.Email? The previous link will stop working.');" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Resend</button>
+                            </form>
+                        }
                         @if (i.AcceptedAt is null)
                         {
                             <form method="post" asp-page-handler="Revoke" asp-route-id="@i.Id"

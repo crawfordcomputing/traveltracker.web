@@ -1,6 +1,6 @@
 # ADR-0002: Soft-Warn (Not Gate) Cost Entry on Not-Yet-Approved Trips
 
-**Status:** Accepted
+**Status:** Accepted (implemented; verified 2026-09-11). Archived.
 **Date:** 2026-08-30
 **Deciders:** Project maintainer(s)
 

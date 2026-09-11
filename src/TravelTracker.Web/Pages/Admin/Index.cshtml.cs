@@ -24,6 +24,7 @@ public class IndexModel : PageModel
     public int CostCenterCount { get; private set; }
     public int ProjectCodeCount { get; private set; }
     public int ExpensePolicyCount { get; private set; }
+    public int EmailTemplateCount { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -37,5 +38,6 @@ public class IndexModel : PageModel
         CostCenterCount = await _db.CostCenters.CountAsync();
         ProjectCodeCount = await _db.ProjectCodes.CountAsync();
         ExpensePolicyCount = await _db.ExpensePolicies.CountAsync();
+        EmailTemplateCount = await _db.EmailTemplates.CountAsync();
     }
 }

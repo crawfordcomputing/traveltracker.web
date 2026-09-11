@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using TravelTracker.Web.Data.Entities;
-using TravelTracker.Web.Services;
+using TravelTracker.Web.Services.Email;
 
 namespace TravelTracker.Web.Pages.Account;
 
@@ -14,9 +14,9 @@ namespace TravelTracker.Web.Pages.Account;
 public class ForgotPasswordModel : PageModel
 {
     private readonly UserManager<AppUser> _userManager;
-    private readonly IEmailSender _email;
+    private readonly IEmailTemplateService _email;
 
-    public ForgotPasswordModel(UserManager<AppUser> userManager, IEmailSender email)
+    public ForgotPasswordModel(UserManager<AppUser> userManager, IEmailTemplateService email)
     {
         _userManager = userManager;
         _email = email;
@@ -51,10 +51,12 @@ public class ForgotPasswordModel : PageModel
             var link = Url.Page("/Account/ResetPassword", pageHandler: null,
                 values: new { email = Input.Email, token = encoded }, protocol: Request.Scheme);
 
-            await _email.SendAsync(Input.Email, "Reset your Travel Tracker password",
-                $"<p>Someone requested a password reset for your account.</p>" +
-                $"<p><a href=\"{link}\">Reset your password</a></p>" +
-                $"<p>If this wasn't you, you can safely ignore this email.</p>");
+            await _email.SendAsync(EmailTemplateKey.PasswordReset, Input.Email,
+                new Dictionary<string, string?>
+                {
+                    [EmailTemplateTokens.RecipientName] = user.DisplayName,
+                    ["ResetLink"] = link,
+                });
         }
 
         Submitted = true;

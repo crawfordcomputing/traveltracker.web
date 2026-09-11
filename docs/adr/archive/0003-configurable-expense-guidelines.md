@@ -1,6 +1,6 @@
 # ADR-0003: Configurable Per-Category Expense Guidelines
 
-**Status:** Accepted
+**Status:** Accepted (implemented; verified 2026-09-11). Archived.
 **Date:** 2026-08-30
 **Deciders:** Project maintainer(s)
 

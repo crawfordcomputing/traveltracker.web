@@ -36,6 +36,7 @@ else
                     <th class="text-nowrap">When (UTC)</th>
                     <th>Recipient</th>
                     <th>Subject</th>
+                    <th>Template</th>
                     <th>Status</th>
                     <th>Error</th>
                 </tr>
@@ -47,6 +48,13 @@ else
                         <td class="text-nowrap">@n.SentAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
                         <td>@n.Recipient</td>
                         <td>@n.Subject</td>
+                        <td class="small text-nowrap">
+                            @if (n.TemplateKey is not null)
+                            {
+                                @n.TemplateKey<span class="text-muted"> / @n.Audience</span>
+                            }
+                            else { <span class="text-muted">—</span> }
+                        </td>
                         <td>
                             @if (n.Status == NotificationStatus.Sent)
                             {

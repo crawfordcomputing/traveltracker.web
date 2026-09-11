@@ -85,7 +85,7 @@ public class PasswordResetTests
             var user = await CreateUserAsync(um, "reset@example.com");
 
             // ---- Forgot: request a reset link -------------------------------
-            var forgot = new ForgotPasswordModel(um, email)
+            var forgot = new ForgotPasswordModel(um, EmailTemplateServices.Real(db, email))
             {
                 PageContext = NewPageContext(scope.ServiceProvider),
                 Url = new FakeUrlHelper(),
@@ -134,7 +134,7 @@ public class PasswordResetTests
             var um = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
             await db.Database.EnsureCreatedAsync();
 
-            var forgot = new ForgotPasswordModel(um, email)
+            var forgot = new ForgotPasswordModel(um, EmailTemplateServices.Real(db, email))
             {
                 PageContext = NewPageContext(scope.ServiceProvider),
                 Url = new FakeUrlHelper(),
@@ -166,7 +166,7 @@ public class PasswordResetTests
             user.IsActive = false;
             await um.UpdateAsync(user);
 
-            var forgot = new ForgotPasswordModel(um, email)
+            var forgot = new ForgotPasswordModel(um, EmailTemplateServices.Real(db, email))
             {
                 PageContext = NewPageContext(scope.ServiceProvider),
                 Url = new FakeUrlHelper(),

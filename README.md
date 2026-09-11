@@ -260,6 +260,10 @@ maps to `ConnectionStrings:Default`). Anything here can instead be a
 | `Email__Smtp__Port` | `587` | SMTP port. |
 | `Email__Smtp__UseSsl` | `true` | Use SSL/TLS. |
 | `Email__Smtp__Username` / `Email__Smtp__Password` | (none) | SMTP credentials. |
+| `Email__AppName` | `Travel Tracker` | Product name used by the `{{AppName}}` email template token. |
+| `Email__InternalDomains__{n}` | (none) | Indexed array of "our" email domains, e.g. `Email__InternalDomains__0=example.com`. Recipients on these domains get the **Internal** template variant, everyone else **External**. Exact match only (list subdomains explicitly). Falls back to `Auth__Registration__AllowedDomains`; with neither set, every recipient gets the **Any** variant. |
+
+Email wording is editable by admins at **Admin → Email templates** (ADR-0005). Overrides live in the database; the built-in defaults live in code, so "Reset to default" just deletes the override.
 
 **Eval / QA data** (production-safe; act only when explicitly set)
 

@@ -33,6 +33,9 @@ public static class EmailSetup
                 break;
         }
 
+        // Template layer above IEmailSender (ADR-0005): callers pass a key + tokens.
+        services.AddScoped<Email.IEmailTemplateService, Email.EmailTemplateService>();
+
         // Reused by self-serve registration and the resend-confirmation page.
         services.AddScoped<EmailConfirmationService>();
 

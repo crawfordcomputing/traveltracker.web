@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using TravelTracker.Web.Data.Entities;
+using TravelTracker.Web.Services.Email;
 
 namespace TravelTracker.Web.Services;
 
@@ -14,9 +15,9 @@ namespace TravelTracker.Web.Services;
 public class EmailConfirmationService
 {
     private readonly UserManager<AppUser> _users;
-    private readonly IEmailSender _email;
+    private readonly IEmailTemplateService _email;
 
-    public EmailConfirmationService(UserManager<AppUser> users, IEmailSender email)
+    public EmailConfirmationService(UserManager<AppUser> users, IEmailTemplateService email)
     {
         _users = users;
         _email = email;
@@ -28,10 +29,12 @@ public class EmailConfirmationService
         var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         var link = linkFactory(user.Id, encoded);
 
-        await _email.SendAsync(user.Email!, "Confirm your Travel Tracker email",
-            "<p>Welcome to Travel Tracker. Please confirm your email address to finish setting up your account.</p>" +
-            $"<p><a href=\"{link}\">Confirm your email</a></p>" +
-            "<p>If you didn't create this account, you can safely ignore this email.</p>");
+        await _email.SendAsync(EmailTemplateKey.EmailConfirmation, user.Email!,
+            new Dictionary<string, string?>
+            {
+                [EmailTemplateTokens.RecipientName] = user.DisplayName,
+                ["ConfirmLink"] = link,
+            });
     }
 
     // Decode a base64url token back to the raw Identity token for ConfirmEmailAsync.

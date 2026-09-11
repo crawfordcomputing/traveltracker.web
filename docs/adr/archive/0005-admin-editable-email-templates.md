@@ -1,6 +1,6 @@
 # ADR-0005: Admin-Editable Email Templates (Internal / External Variants)
 
-**Status:** Proposed
+**Status:** Accepted (implemented 2026-09-11). Archived.
 **Date:** 2026-09-11
 **Deciders:** Project maintainer(s)
 
@@ -12,7 +12,7 @@ deploy. Admins also want different wording for **internal** recipients
 (employees on the company domain) and **external** recipients (contractors,
 guests, consultants on other domains).
 
-Confirmed from the current code, there are four emails at three call sites:
+Confirmed from the current code, there are five emails at four call sites:
 
 | # | Email | Sent from | Recipient | Failure handling |
 |---|-------|-----------|-----------|------------------|
@@ -20,8 +20,17 @@ Confirmed from the current code, there are four emails at three call sites:
 | 2 | Email confirmation | `Services/EmailConfirmationService.SendLinkAsync` | the user | propagates |
 | 3 | Trip submitted for approval | `Trips/Details.OnPostSubmitAsync` | effective approver | swallowed (`TrySendAsync`) |
 | 4 | Trip approved / rejected | `Trips/Details.DecideAsync` | traveler | swallowed (`TrySendAsync`) |
+| 5 | Invitation | `Admin/Invites/Index.OnPostCreateAsync` | invitee | swallowed (`TrySendAsync`) |
 
-Invitations do **not** send email today (the admin copies the link).
+**Invitations do not send email today** — the admin mints a token and copies
+the link off the confirmation banner by hand. This ADR closes that gap: invite
+creation now also sends an email carrying the same link, through this same
+template system, so invites pick up the internal/external wording split for
+free (an admin inviting an external contractor gets the "External" variant
+automatically, no extra code). Delivery is best-effort like the other
+non-security emails: the on-screen link banner stays as a fallback, so a
+`TrySendAsync` failure (bad SMTP config, provider outage) never leaves the
+admin without a way to hand the link over some other way.
 
 The sending pipeline is already cleanly layered:
 `caller -> IEmailSender (AuditingEmailSender -> Logging|Smtp)`.
@@ -42,6 +51,7 @@ An enum `EmailTemplateKey`, one value per email:
 - `TripSubmitted`
 - `TripApproved`
 - `TripRejected`
+- `Invitation` (new — see "Invites page" below)
 
 Approved and rejected are split (today they share one string with a `{verb}`)
 so admins can word a rejection differently from an approval.
@@ -97,16 +107,24 @@ deleting the row.
 
 | Key | Tokens | Required |
 |-----|--------|----------|
-| All | `{{AppName}}`, `{{RecipientName}}` | |
+| All | `{{AppName}}`, `{{RecipientName}}`, `{{RecipientEmail}}` | |
 | `PasswordReset` | `{{ResetLink}}` | `{{ResetLink}}` |
 | `EmailConfirmation` | `{{ConfirmLink}}` | `{{ConfirmLink}}` |
 | `TripSubmitted` | `{{Trip.Code}}`, `{{Trip.Purpose}}`, `{{Trip.Dates}}`, `{{Traveler.Name}}`, `{{ApprovalLink}}` | `{{ApprovalLink}}` |
 | `TripApproved` / `TripRejected` | `{{Trip.Code}}`, `{{Trip.Purpose}}`, `{{Trip.Dates}}`, `{{Approver.Name}}`, `{{Comment}}`, `{{CommentBlock}}`, `{{TripLink}}` | |
+| `Invitation` | `{{InviteLink}}`, `{{Invite.Role}}`, `{{Invite.ExpiresAt}}`, `{{InvitedBy.Name}}` | `{{InviteLink}}` |
 
 - `{{CommentBlock}}` renders `<p>Comment: ...</p>` when a comment exists and
   nothing otherwise. That covers today's only conditional without adding
   conditional syntax.
 - `{{Trip.Code}}` depends on ADR-0004.
+- `{{RecipientName}}` is not available for `Invitation`: the invitee has no
+  account yet, only an email address. It resolves to an empty string like any
+  other unset optional token, so the default `Invitation` template greets by
+  email (`{{RecipientEmail}}`, added during implementation) rather than name.
+- `{{Invite.ExpiresAt}}` is the invite's expiry date, not a session expiry —
+  formatted the same way dates are formatted elsewhere in the app, no new
+  formatting logic.
 
 ### Rendering and safety
 
@@ -137,9 +155,11 @@ public interface IEmailTemplateService
 }
 ```
 
-Classifies -> resolves -> renders -> calls `IEmailSender.SendAsync`. The three
+Classifies -> resolves -> renders -> calls `IEmailSender.SendAsync`. The four
 call sites switch from building HTML to passing tokens. Their failure handling
-does not change (propagate vs `TrySendAsync`).
+does not change (propagate vs `TrySendAsync`) — for `Admin/Invites/Index`,
+that means `TrySendAsync`, matching the trip emails rather than the
+security-sensitive ones.
 
 ### Audit
 
@@ -164,6 +184,29 @@ card on the Admin home.
 - The edit page shows which audience a sample address would classify as, so
   admins can sanity-check `Email:InternalDomains`.
 
+### Invites page
+
+`Admin/Invites/Index.OnPostCreateAsync` gains one call: right after
+`_db.SaveChangesAsync()` persists the new `Invitation` row, it calls
+`IEmailTemplateService.SendAsync(EmailTemplateKey.Invitation, email, tokens)`
+inside the same `TrySendAsync` wrapper `Trips/Details` already uses, so a
+delivery failure never blocks invite creation or the redirect.
+
+- The existing "here's the link" banner (`TempData["InviteLink"]`) is
+  unchanged and still renders after every create. It's the fallback when
+  `TrySendAsync` fails, and some admins will keep using it anyway (e.g.
+  pasting into a Teams DM instead of waiting on email).
+- New **Resend** action per open (unaccepted, unexpired) row on the Invites
+  list. Only the token's SHA-256 hash is stored, so the original link can't be
+  rebuilt: Resend **mints a fresh token and replaces `TokenHash`** (the previous
+  link stops working) but does **not** move `ExpiresAt`. The new link is emailed
+  through the same `IEmailTemplateService` call and shown in the banner. Useful
+  when the first send bounced, landed in spam, or the admin wants to nudge
+  someone. *(Amended during implementation: the draft said "re-send the existing
+  token", which the hash-only storage makes impossible without weakening the
+  never-store-the-token guarantee.)*
+- Revoked and expired invites don't get a Resend action.
+
 ### Configuration
 
 | App setting | Default | Notes |
@@ -177,7 +220,7 @@ Add both to the README's Email settings table.
 
 | Option | Why not |
 |--------|---------|
-| Template engine (Scriban / Fluid) | Loops and conditionals are not needed for five short emails. Adds a dependency and a sandboxing surface. Revisit if templates grow. |
+| Template engine (Scriban / Fluid) | Loops and conditionals are not needed for six short emails. Adds a dependency and a sandboxing surface. Revisit if templates grow. |
 | Razor views as templates | Needs a recompile or file edits on the server; not admin-editable. |
 | Seed defaults into the DB | Every install freezes today's wording; improved defaults never reach them. |
 | Classify audience by user role or an `IsExternal` flag | More precise, but the recipient of reset/confirmation may not have a finished profile, and there is no such flag today. Domain match works for every email with zero new user data. Could be added later as an override. |
@@ -190,6 +233,9 @@ Add both to the README's Email settings table.
 - Internal and external recipients can get different messaging.
 - Required-token validation makes it hard to ship a reset email with no link.
 - Sending, auditing, and provider switching are untouched.
+- Invites finally send an email instead of relying on the admin to copy/paste
+  a link by hand, and external-contractor invites automatically get the
+  External wording with zero extra code.
 
 **Negative / limits**
 - New dependency: `HtmlSanitizer` (MIT).
@@ -208,16 +254,27 @@ Add both to the README's Email settings table.
   required token rejected, size limits.
 - Resolution order: (Key, Audience) beats (Key, Any) beats default.
 - Runtime fallback: corrupt stored template -> default sent, warning logged.
-- Each of the five emails renders the same as today when no overrides exist
-  (snapshot the default output before refactoring).
+- Each of the four previously-sent emails renders the same as today when no
+  overrides exist (snapshot the default output before refactoring).
+  `Invitation` has no "today" baseline since it sends nothing now — cover it
+  with a fresh render test instead (default template includes a non-empty
+  `{{InviteLink}}`).
 - Admin pages: non-admin gets 403; save, preview, reset, send-test.
 - `NotificationLog` records `TemplateKey`/`Audience`, and still no body.
+- Invite creation sends the `Invitation` email on success and records a
+  `NotificationLog` row with `TemplateKey = Invitation`.
+- A failing `IEmailSender` during invite creation doesn't roll back the
+  `Invitation` row or block the redirect — `TrySendAsync` swallows it, and the
+  on-screen link banner still renders (regression test for the fallback).
+- **Resend** rotates `TokenHash` but keeps `ExpiresAt`; an accepted or expired
+  invite has no Resend action available and the handler ignores it.
+- `Invitation` requires `{{InviteLink}}` like every other required-token key;
+  missing token rejected on save.
 
 ## Follow-ups (not part of this change)
 
 - Per-audience From address / reply-to.
 - Plain-text alternative part (auto-generated from HTML).
-- Invitation email (today admins copy the link) using this same system.
 - Template version history with diff and rollback.
 - Per-user `IsExternal` override when domain classification is wrong.
 - Localization.
@@ -227,7 +284,7 @@ Add both to the README's Email settings table.
 1. Is domain the right internal/external signal for you, or do you have
    internal staff on multiple domains (need several entries) or externals on
    your domain (need the per-user override sooner)?
-   Yes, domain is fine, we can use the 
+   Yes, domain is fine, we can use that email:internaldomains variable to list them
 2. Should admins be allowed to turn off a non-security email (e.g. stop
    `TripApproved` emails) or only edit them? Security emails stay always-on.
    Leave them always on, no ability to turn off
