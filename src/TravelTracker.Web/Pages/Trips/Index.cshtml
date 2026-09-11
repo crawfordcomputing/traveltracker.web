@@ -53,7 +53,7 @@
     </div>
     <div class="col-auto">
         <label class="form-label" for="Search">Search</label>
-        <input type="text" id="Search" name="Search" value="@Model.Search" placeholder="purpose or city" class="form-control" />
+        <input type="text" id="Search" name="Search" value="@Model.Search" placeholder="purpose, city, or trip code" class="form-control" />
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-outline-secondary">Filter</button>
@@ -71,6 +71,7 @@ else
         <caption class="visually-hidden">@ViewData["Title"]</caption>
         <thead>
             <tr>
+                <th scope="col">Code</th>
                 <th scope="col">Purpose</th>
                 @if (Model.ShowTraveler) { <th scope="col">Traveler</th> }
                 <th scope="col">Dates</th>
@@ -83,6 +84,7 @@ else
         @foreach (var t in Model.Trips)
         {
             <tr>
+                <td class="text-nowrap"><code>@t.Code</code></td>
                 <td><a asp-page="Details" asp-route-id="@t.Id">@t.Purpose</a></td>
                 @if (Model.ShowTraveler) { <td>@(t.Traveler?.DisplayName ?? "—")</td> }
                 <td>@t.StartDate.ToString("MMM d") &ndash; @t.EndDate.ToString("MMM d, yyyy")</td>

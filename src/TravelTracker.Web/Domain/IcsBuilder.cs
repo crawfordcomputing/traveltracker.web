@@ -46,7 +46,7 @@ public static class IcsBuilder
                     start: leg.ArriveDate, endExclusive: leg.DepartDate.AddDays(1),
                     summary: $"{trip.Purpose}: {leg.City}",
                     location: LocationOf(leg),
-                    description: DescribeLeg(leg));
+                    description: DescribeLeg(trip, leg));
             }
         }
 
@@ -85,9 +85,14 @@ public static class IcsBuilder
         return joined.Length == 0 ? null : joined;
     }
 
-    private static string? DescribeLeg(Destination leg)
+    // The trip code leads every description so the reference is visible in the
+    // calendar (UID deliberately stays trip-{Id}: changing it would duplicate
+    // events already imported). Omitted for unsaved trips with no code yet.
+    private static string? DescribeLeg(Trip trip, Destination leg)
     {
         var lines = new List<string>();
+        if (!string.IsNullOrEmpty(trip.Code))
+            lines.Add($"Trip code: {trip.Code}");
         if (leg.TransportMode != TransportMode.Unspecified)
             lines.Add($"Transport: {leg.TransportMode}");
         if (!string.IsNullOrWhiteSpace(leg.LodgingName))
@@ -100,7 +105,14 @@ public static class IcsBuilder
     }
 
     private static string? DescribeTrip(Trip trip)
-        => string.IsNullOrWhiteSpace(trip.Notes) ? null : trip.Notes;
+    {
+        var lines = new List<string>();
+        if (!string.IsNullOrEmpty(trip.Code))
+            lines.Add($"Trip code: {trip.Code}");
+        if (!string.IsNullOrWhiteSpace(trip.Notes))
+            lines.Add(trip.Notes);
+        return lines.Count == 0 ? null : string.Join("\n", lines);
+    }
 
     // RFC 5545 TEXT escaping: backslash, semicolon, comma, and newlines. Folds long
     // content lines at 75 octets with a CRLF + leading space per the spec.

@@ -360,7 +360,8 @@ public class DetailsModel : TripPageModel
             $"Trip awaiting your approval: {Trip.Purpose}",
             $"<p>{H(Trip.Traveler?.DisplayName)} submitted a trip for your approval.</p>" +
             $"<p><strong>{H(Trip.Purpose)}</strong><br>" +
-            $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}</p>" +
+            $"{Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}<br>" +
+            $"Trip code: {H(Trip.Code)}</p>" +
             $"<p><a href=\"{H(approvalUrl)}\">Review and approve or reject this trip</a></p>");
 
         TempData["ExpenseInfo"] = $"Submitted to {approver.DisplayName} for approval.";
@@ -415,6 +416,7 @@ public class DetailsModel : TripPageModel
             $"Your trip was {verb}: {Trip.Purpose}",
             $"<p>Your trip <strong>{H(Trip.Purpose)}</strong> ({Trip.StartDate:MMM d} – {Trip.EndDate:MMM d, yyyy}) " +
             $"was {verb} by {H(EffectiveApprover(Trip)?.DisplayName ?? "your approver")}.</p>" +
+            $"<p>Trip code: {H(Trip.Code)}</p>" +
             (comment is null ? "" : $"<p>Comment: {H(comment)}</p>"));
 
         TempData["ExpenseInfo"] = $"Trip {verb}.";

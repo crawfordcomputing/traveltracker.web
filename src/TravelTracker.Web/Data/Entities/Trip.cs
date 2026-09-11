@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TravelTracker.Web.Domain;
 
 namespace TravelTracker.Web.Data.Entities;
 
@@ -7,6 +8,13 @@ namespace TravelTracker.Web.Data.Entities;
 public class Trip
 {
     public int Id { get; set; }
+
+    // Immutable human-readable reference (TT-2026-7K4-Q9M). Assigned once by
+    // AppDbContext.SaveChangesAsync when the trip is first inserted and never
+    // changed after; not bound from any form. Unique-indexed. See Domain/TripCode
+    // and ADR-0004.
+    [Required, StringLength(TripCode.MaxLength)]
+    public string Code { get; set; } = string.Empty;
 
     // The employee the trip is for. May differ from CreatedById when a
     // Manager/Admin books a trip on someone else's behalf.

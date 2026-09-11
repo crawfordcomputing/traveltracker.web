@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data.Entities;
+using TravelTracker.Web.Domain;
 
 namespace TravelTracker.Web.Data;
 
@@ -37,6 +38,57 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
     public DbSet<Approval> Approvals => Set<Approval>();
     public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+
+    // Every newly inserted Trip gets its reference code here, so Create, Clone, and
+    // both seeders are covered without any caller knowing about codes (ADR-0004).
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        await AssignTripCodesAsync(cancellationToken);
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // The app is async end to end (no sync SaveChanges callers), so the sync
+    // overload is deliberately not hooked. If a sync caller is ever added it must
+    // go through SaveChangesAsync, or trips would be inserted with an empty Code.
+
+    // Draw attempts per trip before giving up. A clash costs one extra indexed
+    // query; hitting the limit means something is badly wrong (RNG or data).
+    public const int MaxCodeAttempts = 5;
+
+    private async Task AssignTripCodesAsync(CancellationToken ct)
+    {
+        var pending = ChangeTracker.Entries<Trip>()
+            .Where(e => e.State == EntityState.Added && string.IsNullOrEmpty(e.Entity.Code))
+            .Select(e => e.Entity)
+            .ToList();
+        if (pending.Count == 0) return;
+
+        // Codes already claimed in this unit of work (seeders add many trips in one
+        // save), so two new trips in the same batch can't draw the same code.
+        var claimed = new HashSet<string>(
+            ChangeTracker.Entries<Trip>()
+                .Select(e => e.Entity.Code)
+                .Where(c => !string.IsNullOrEmpty(c)),
+            StringComparer.Ordinal);
+
+        foreach (var trip in pending)
+        {
+            var year = trip.CreatedAt.ToUniversalTime().Year;
+            string? code = null;
+            for (var attempt = 0; attempt < MaxCodeAttempts && code is null; attempt++)
+            {
+                var candidate = TripCode.Generate(year);
+                if (claimed.Contains(candidate)) continue;
+                if (await Trips.AsNoTracking().AnyAsync(t => t.Code == candidate, ct)) continue;
+                code = candidate;
+            }
+
+            trip.Code = code ?? throw new InvalidOperationException(
+                $"Could not assign a unique trip code after {MaxCodeAttempts} attempts.");
+            claimed.Add(code);
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -144,6 +196,11 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole, string>
             // an eval trip cascades its Destinations/Expenses/Mileage/Approvals.
             e.HasIndex(t => t.EvalBatchId)
                 .HasFilter("[EvalBatchId] IS NOT NULL");
+
+            // Human-readable reference code (ADR-0004). The unique index is the
+            // backstop for the near-impossible concurrent-draw race; the normal
+            // path checks for a clash before saving (see AssignTripCodesAsync).
+            e.HasIndex(t => t.Code).IsUnique();
         });
 
         builder.Entity<Expense>(e =>

@@ -85,9 +85,17 @@ public class IndexModel : TripPageModel
         if (!string.IsNullOrWhiteSpace(Search))
         {
             var term = Search.Trim();
+            // A term that parses as a full trip code (any casing/spacing) or as just
+            // its 6-character random part also matches on Code (ADR-0004). The
+            // suffix is only unique per year, so it's a trailing match, not equality.
+            // Both values contain only [0-9A-Z-], so they carry no LIKE wildcards.
+            var fullCode = TripCode.TryParse(term, out var parsed) ? parsed : null;
+            var suffixLike = TripCode.TryParseSuffix(term, out var sfx) ? $"%-{sfx}" : null;
             query = query.Where(t =>
                 EF.Functions.Like(t.Purpose, $"%{term}%") ||
-                t.Destinations.Any(d => EF.Functions.Like(d.City, $"%{term}%")));
+                t.Destinations.Any(d => EF.Functions.Like(d.City, $"%{term}%")) ||
+                (fullCode != null && t.Code == fullCode) ||
+                (suffixLike != null && EF.Functions.Like(t.Code, suffixLike)));
         }
 
         var today = DateOnly.FromDateTime(DateTime.Today);

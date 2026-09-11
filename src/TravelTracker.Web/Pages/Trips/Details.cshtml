@@ -21,6 +21,13 @@
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
         <h1 class="h3 mb-1">@Model.Trip.Purpose</h1>
+        @* Read-only reference for Concur / emails; never an input (ADR-0004). *@
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="text-muted small">Trip code</span>
+            <code id="trip-code" class="fs-6 user-select-all">@Model.Trip.Code</code>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                    data-copy-target="#trip-code" aria-label="Copy trip code">Copy</button>
+        </div>
         <div class="text-muted">
             @(Model.Trip.Traveler?.DisplayName ?? "—") &middot;
             @Model.Trip.StartDate.ToString("MMM d") &ndash; @Model.Trip.EndDate.ToString("MMM d, yyyy")
