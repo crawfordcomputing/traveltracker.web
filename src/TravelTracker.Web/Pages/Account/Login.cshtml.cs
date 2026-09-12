@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 
 namespace TravelTracker.Web.Pages.Account;
@@ -40,8 +41,8 @@ public class LoginModel : PageModel
     {
         ReturnUrl = returnUrl;
         ResetSuccess = resetSuccess;
-        EntraIdEnabled = HttpContext.RequestServices
-            .GetRequiredService<IConfiguration>().GetValue<bool>("Auth:EnableEntraId");
+        EntraIdEnabled = AuthSetup.IsEntraIdEnabled(
+            HttpContext.RequestServices.GetRequiredService<IConfiguration>());
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)

@@ -13,6 +13,24 @@ namespace TravelTracker.Web.Data;
 // "sensible default, one config switch" pattern as the DB provider.
 public static class AuthSetup
 {
+    // Entra ID counts as on only when the switch is set AND all three credentials
+    // are actually present. The switch ships true in appsettings.json while the
+    // credentials are supplied out-of-band — user-secrets locally, app settings /
+    // Key Vault in Azure — so "switch on, credentials absent" is the normal state
+    // of a fresh clone, a CI run and the WebApplicationFactory test host (which
+    // loads appsettings.json but no user secrets, since the entry assembly there
+    // is the test runner). Registering the handler in that state makes
+    // OpenIdConnectOptions.Validate() throw ArgumentException("ClientId") on every
+    // request that passes through the authentication middleware, not just at
+    // sign-in. So the credentials gate registration, and every surface that offers
+    // an Entra button asks this same question rather than reading the switch alone
+    // and advertising a scheme that was never registered.
+    public static bool IsEntraIdEnabled(IConfiguration config) =>
+        config.GetValue<bool>("Auth:EnableEntraId")
+        && !string.IsNullOrWhiteSpace(config["Auth:EntraId:TenantId"])
+        && !string.IsNullOrWhiteSpace(config["Auth:EntraId:ClientId"])
+        && !string.IsNullOrWhiteSpace(config["Auth:EntraId:ClientSecret"]);
+
     public static IServiceCollection AddAppIdentity(
         this IServiceCollection services, IConfiguration config)
     {
@@ -111,7 +129,7 @@ public static class AuthSetup
         services.Configure<SecurityStampValidatorOptions>(o =>
             o.ValidationInterval = TimeSpan.FromMinutes(1));
 
-        if (config.GetValue<bool>("Auth:EnableEntraId"))
+        if (IsEntraIdEnabled(config))
         {
             services.AddAuthentication()
                 .AddOpenIdConnect("EntraId", "Microsoft Entra ID", options =>

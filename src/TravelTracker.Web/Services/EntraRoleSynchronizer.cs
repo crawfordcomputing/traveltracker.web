@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
 
@@ -31,7 +32,7 @@ public sealed class EntraRoleSynchronizer
     }
 
     public bool Enabled =>
-        _config.GetValue<bool>("Auth:EnableEntraId")
+        AuthSetup.IsEntraIdEnabled(_config)
         && (_config.GetValue<bool?>("Auth:EntraId:SyncRolesOnLogin") ?? false);
 
     // Reconcile `user`'s Identity roles against the security groups carried on

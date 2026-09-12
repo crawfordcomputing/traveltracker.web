@@ -29,15 +29,83 @@ public class IndexModel : PageModel
     // Active users offered as the bulk-assign target (value = Id, text = "name (email)").
     public SelectList ApproverOptions { get; private set; } = default!;
 
-    // Current filter/sort, echoed back so the UI can reflect and preserve them.
+    // Filter pickers, populated on every GET so the form can round-trip.
+    public SelectList DepartmentOptions { get; private set; } = default!;
+    public SelectList RoleOptions { get; private set; } = default!;
+
+    // Current filters/sort, echoed back so the UI can reflect and preserve them.
+    // The directory can run to hundreds of accounts, so narrowing it is the normal
+    // way in rather than a nicety.
+    [BindProperty(SupportsGet = true)] public string? Search { get; set; }       // free text over display name + email
+    [BindProperty(SupportsGet = true)] public string? Status { get; set; }       // null|all, active, inactive
+    [BindProperty(SupportsGet = true)] public int? DepartmentId { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Role { get; set; }
     [BindProperty(SupportsGet = true)] public string? Filter { get; set; }   // null|all, unassigned, assigned
     [BindProperty(SupportsGet = true)] public string? Sort { get; set; }     // email[_desc], name, department, approver, status
+
+    // True when anything is narrowing the list — drives the "Clear filters" affordance.
+    public bool HasFilters =>
+        !string.IsNullOrWhiteSpace(Search) || !string.IsNullOrWhiteSpace(Status)
+        || DepartmentId is not null || !string.IsNullOrWhiteSpace(Role)
+        || !string.IsNullOrWhiteSpace(Filter);
+
+    // The current view as route values, so sort links and post-action redirects
+    // land the admin back on the same filtered page. Null entries drop out of the
+    // generated URL. Pass `sort` to override just the sort key.
+    public IDictionary<string, object?> FilterRoute(string? sort = null) => new Dictionary<string, object?>
+    {
+        ["Search"] = string.IsNullOrWhiteSpace(Search) ? null : Search,
+        ["Status"] = string.IsNullOrWhiteSpace(Status) ? null : Status,
+        ["DepartmentId"] = DepartmentId,
+        ["Role"] = string.IsNullOrWhiteSpace(Role) ? null : Role,
+        ["Filter"] = string.IsNullOrWhiteSpace(Filter) ? null : Filter,
+        ["Sort"] = string.IsNullOrWhiteSpace(sort ?? Sort) ? null : sort ?? Sort,
+    };
+
+    // Free-text search is user-supplied, so its LIKE metacharacters have to be
+    // neutered or typing "100%" would match everything. Paired with the ESCAPE
+    // clause that EF.Functions.Like's escapeChar overload emits.
+    private const string LikeEscape = "\\";
+    private static string EscapeLike(string term) => term
+        .Replace(LikeEscape, LikeEscape + LikeEscape)
+        .Replace("%", LikeEscape + "%")
+        .Replace("_", LikeEscape + "_")
+        .Replace("[", LikeEscape + "[");
 
     public async Task OnGetAsync()
     {
         IQueryable<AppUser> q = _db.Users
             .Include(u => u.Department).ThenInclude(d => d!.DefaultApprover)
             .Include(u => u.Approver);
+
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            var pattern = $"%{EscapeLike(Search.Trim())}%";
+            q = q.Where(u =>
+                EF.Functions.Like(u.DisplayName, pattern, LikeEscape) ||
+                EF.Functions.Like(u.Email!, pattern, LikeEscape));
+        }
+
+        q = Status switch
+        {
+            "active"   => q.Where(u => u.IsActive),
+            "inactive" => q.Where(u => !u.IsActive),
+            _          => q,
+        };
+
+        if (DepartmentId is int deptId)
+            q = q.Where(u => u.DepartmentId == deptId);
+
+        if (!string.IsNullOrWhiteSpace(Role))
+        {
+            // Role membership lives in Identity's join table, so narrow by an IN
+            // subquery rather than pulling every user's roles back to compare here.
+            var role = Role;
+            var inRole = _db.UserRoles
+                .Where(ur => _db.Roles.Any(r => r.Id == ur.RoleId && r.Name == role))
+                .Select(ur => ur.UserId);
+            q = q.Where(u => inRole.Contains(u.Id));
+        }
 
         q = Filter switch
         {
@@ -78,6 +146,8 @@ public class IndexModel : PageModel
         }
 
         ApproverOptions = await _db.ApproverSelectListAsync();
+        DepartmentOptions = await _db.DepartmentSelectListAsync(DepartmentId);
+        RoleOptions = ReferenceLists.RoleSelectList(Role);
     }
 
     // Assign one approver to many users in a single action. Rows that would make a
@@ -90,12 +160,12 @@ public class IndexModel : PageModel
         if (selectedIds is null || selectedIds.Length == 0)
         {
             TempData["Error"] = "Select at least one user first.";
-            return RedirectToPage(new { Filter, Sort });
+            return RedirectToPage(FilterRoute());
         }
         if (bulkApproverId is null)
         {
             TempData["Error"] = "Choose an approver to assign.";
-            return RedirectToPage(new { Filter, Sort });
+            return RedirectToPage(FilterRoute());
         }
         // Mirror the select list: only real, active users may be assigned as an
         // approver (a forged post must not route trips to a deactivated account).
@@ -103,7 +173,7 @@ public class IndexModel : PageModel
         if (approver is null || !approver.IsActive)
         {
             TempData["Error"] = "Unknown or inactive approver.";
-            return RedirectToPage(new { Filter, Sort });
+            return RedirectToPage(FilterRoute());
         }
 
         // The current approver map (userId -> approverId), fed to the pure planner
@@ -141,7 +211,7 @@ public class IndexModel : PageModel
         }
         TempData["Status"] = msg;
 
-        return RedirectToPage(new { Filter, Sort });
+        return RedirectToPage(FilterRoute());
     }
 
     // Deactivate (offboard) or reactivate a user. Deactivating the last active
@@ -155,7 +225,7 @@ public class IndexModel : PageModel
         if (user.IsActive && await AdminGuard.IsLastActiveAdminAsync(_userManager, user))
         {
             TempData["Error"] = "You cannot deactivate the last active administrator.";
-            return RedirectToPage();
+            return RedirectToPage(FilterRoute());
         }
 
         user.IsActive = !user.IsActive;
@@ -165,7 +235,7 @@ public class IndexModel : PageModel
         TempData["Status"] = user.IsActive
             ? $"{user.Email} reactivated."
             : $"{user.Email} deactivated — they can no longer sign in.";
-        return RedirectToPage();
+        return RedirectToPage(FilterRoute());
     }
 
     // Admin-initiated password reset: email the user a one-time link to choose their
@@ -191,6 +261,6 @@ public class IndexModel : PageModel
         TempData["SetupLink"] = link;
         TempData["SetupEmailed"] = sent;
         TempData["SetupExpiresIn"] = _setup.LifetimeText;
-        return RedirectToPage();
+        return RedirectToPage(FilterRoute());
     }
 }

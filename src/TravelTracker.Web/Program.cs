@@ -41,6 +41,23 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+// Auth:EnableEntraId ships true but the credentials come from user-secrets / app
+// settings, so the switch alone does not turn SSO on (see AuthSetup.IsEntraIdEnabled).
+// That degrades to local accounts instead of failing every request, which is right for
+// a fresh clone, CI and the test host — but in a real deployment it means someone
+// forgot a setting, so say so loudly rather than quietly serving a login page with no
+// Entra button.
+if (app.Configuration.GetValue<bool>("Auth:EnableEntraId")
+    && !AuthSetup.IsEntraIdEnabled(app.Configuration))
+{
+    app.Logger.LogWarning(
+        "Auth:EnableEntraId is true but Entra ID is inactive: one or more of " +
+        "Auth:EntraId:TenantId, Auth:EntraId:ClientId, Auth:EntraId:ClientSecret is " +
+        "missing. Sign-in falls back to local accounts only. Supply the three values " +
+        "(user-secrets locally, app settings / Key Vault in Azure), or set " +
+        "Auth:EnableEntraId=false to silence this.");
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

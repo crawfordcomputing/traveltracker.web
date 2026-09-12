@@ -123,7 +123,7 @@ variables (use `__` as the section separator, e.g. `ConnectionStrings__Default`)
 {
   "ConnectionStrings": { "Default": "" },      // required; set per environment
   "Storage": { "Blob": { "ConnectionString": "UseDevelopmentStorage=true" } },  // Azurite in dev
-  "Auth": { "EnableEntraId": false },
+  "Auth": { "EnableEntraId": true },          // as shipped; set false if not using SSO
   "Seed": { "AdminEmail": "admin@example.com", "AdminPassword": "Admin123!" }
 }
 ```
