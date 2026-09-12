@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Services;
 
@@ -126,7 +127,7 @@ public class ExternalLoginsModel : PageModel
     private async Task LoadAsync(AppUser user)
     {
         CurrentLogins = await _userManager.GetLoginsAsync(user);
-        EntraIdEnabled = _config.GetValue<bool>("Auth:EnableEntraId");
+        EntraIdEnabled = AuthSetup.IsEntraIdEnabled(_config);
         EntraLinked = CurrentLogins.Any(l => l.LoginProvider == EntraProvider);
 
         var hasPassword = await _userManager.HasPasswordAsync(user);
