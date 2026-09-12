@@ -4,19 +4,22 @@
     ViewData["Title"] = "Users";
 
     // Build a sort link for a column: toggles asc/desc on the active column,
-    // preserves the current filter.
+    // preserves every active filter.
     Func<string, string> sortHref = key =>
     {
         var active = string.Equals(Model.Sort, key, StringComparison.Ordinal);
         var next = active ? key + "_desc" : key;
         // If already on the _desc variant, go back to asc.
         if (string.Equals(Model.Sort, key + "_desc", StringComparison.Ordinal)) next = key;
-        return Url.Page("/Admin/Users/Index", new { Filter = Model.Filter, Sort = next }) ?? "";
+        return Url.Page("/Admin/Users/Index", Model.FilterRoute(next)) ?? "";
     };
     Func<string, string> sortCaret = key =>
         string.Equals(Model.Sort, key, StringComparison.Ordinal) ? " ▲"
         : string.Equals(Model.Sort, key + "_desc", StringComparison.Ordinal) ? " ▼"
         : "";
+
+    var countText = (Model.Users.Count == 1 ? "1 user shown" : $"{Model.Users.Count} users shown")
+        + (Model.HasFilters ? " (filtered)" : "");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -60,24 +63,58 @@
     </div>
 }
 
-<div class="d-flex flex-wrap gap-3 align-items-end mb-3">
-    <form method="get" class="d-flex align-items-end gap-2">
-        <div>
-            <label for="Filter" class="form-label small mb-1">Approver</label>
-            <select id="Filter" name="Filter" class="form-select form-select-sm" style="min-width: 12rem;"
-                    onchange="this.form.submit()">
-                <option value="" selected="@(string.IsNullOrEmpty(Model.Filter) ? "selected" : null)">All users</option>
-                <option value="unassigned" selected="@(Model.Filter == "unassigned" ? "selected" : null)">No approver set</option>
-                <option value="assigned" selected="@(Model.Filter == "assigned" ? "selected" : null)">Approver set</option>
-            </select>
-        </div>
-        <input type="hidden" name="Sort" value="@Model.Sort" />
-        <noscript><button type="submit" class="btn btn-sm btn-secondary">Apply</button></noscript>
-    </form>
-    <div class="text-muted small">@Model.Users.Count shown</div>
-</div>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <input type="hidden" name="Sort" value="@Model.Sort" />
+    <div class="col-12 col-md-auto">
+        <label for="Search" class="form-label small mb-1">Search</label>
+        <input type="search" id="Search" name="Search" value="@Model.Search" class="form-control form-control-sm"
+               style="min-width: 14rem;" placeholder="name or email" />
+    </div>
+    <div class="col-6 col-md-auto">
+        <label for="Status" class="form-label small mb-1">Status</label>
+        <select id="Status" name="Status" class="form-select form-select-sm">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Status) ? "selected" : null)">— any —</option>
+            <option value="active" selected="@(Model.Status == "active" ? "selected" : null)">Active</option>
+            <option value="inactive" selected="@(Model.Status == "inactive" ? "selected" : null)">Inactive</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-auto">
+        <label for="DepartmentId" class="form-label small mb-1">Department</label>
+        <select id="DepartmentId" name="DepartmentId" asp-items="Model.DepartmentOptions"
+                class="form-select form-select-sm">
+            <option value="">— any —</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-auto">
+        <label for="Role" class="form-label small mb-1">Role</label>
+        <select id="Role" name="Role" asp-items="Model.RoleOptions" class="form-select form-select-sm">
+            <option value="">— any —</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-auto">
+        <label for="Filter" class="form-label small mb-1">Approver</label>
+        <select id="Filter" name="Filter" class="form-select form-select-sm">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Filter) ? "selected" : null)">— any —</option>
+            <option value="unassigned" selected="@(Model.Filter == "unassigned" ? "selected" : null)">No approver set</option>
+            <option value="assigned" selected="@(Model.Filter == "assigned" ? "selected" : null)">Approver set</option>
+        </select>
+    </div>
+    <div class="col-12 col-md-auto">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+        @if (Model.HasFilters)
+        {
+            <a href="@Url.Page("/Admin/Users/Index", new { Sort = Model.Sort })" class="btn btn-sm btn-link">Clear</a>
+        }
+    </div>
+    <div class="col-12 text-muted small">@countText</div>
+</form>
 
 <form method="post" asp-page-handler="BulkAssign" id="bulkForm">
+    @* Round-trip the current view so every handler's redirect lands back on it. *@
+    <input type="hidden" name="Search" value="@Model.Search" />
+    <input type="hidden" name="Status" value="@Model.Status" />
+    <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
+    <input type="hidden" name="Role" value="@Model.Role" />
     <input type="hidden" name="Filter" value="@Model.Filter" />
     <input type="hidden" name="Sort" value="@Model.Sort" />
 
