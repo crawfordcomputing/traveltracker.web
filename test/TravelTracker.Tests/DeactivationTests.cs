@@ -71,7 +71,13 @@ public class DeactivationTests
         var httpContext = new DefaultHttpContext { RequestServices = sp };
         var actionContext = new ActionContext(
             httpContext, new RouteData(), new PageActionDescriptor(), new ModelStateDictionary());
-        return new IndexModel(db, um)
+        // Deactivation never issues a password link; a no-op mailer satisfies the ctor.
+        var mailer = new TravelTracker.Web.Services.PasswordSetupMailer(
+            um, new NoopEmailTemplateService(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<TravelTracker.Web.Services.PasswordSetupMailer>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new TravelTracker.Web.Auth.PasswordSetupTokenProviderOptions()));
+
+        return new IndexModel(db, um, mailer)
         {
             PageContext = new PageContext(actionContext),
             TempData = new TempDataDictionary(httpContext, new TestTempDataProvider())

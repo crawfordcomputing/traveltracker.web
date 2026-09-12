@@ -25,6 +25,9 @@
   --tt-text:    var(--tt-gray-900);
   --tt-muted:   var(--tt-gray-500);
 
+  /* Required-field marker. 6.2:1 on --tt-bg, 6.5:1 on white (WCAG AA). */
+  --tt-required: #b91c1c;
+
   /* Typography */
   --tt-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
@@ -181,6 +184,11 @@ a:hover { color: var(--tt-brand-700); text-decoration: underline; }
   border-color: var(--tt-brand);
   box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .15);
 }
+
+/* Required fields: marker from RequiredLabelTagHelper, legend from
+   RequiredLegendFormTagHelper. Color is never the only cue (asterisk + legend). */
+.tt-required { color: var(--tt-required); font-weight: 600; margin-left: .2rem; }
+.tt-required-legend { flex-basis: 100%; width: 100%; font-size: .875rem; color: var(--tt-muted); margin-bottom: .75rem; }
 
 /* ---- Footer ---- */
 .footer { background: var(--tt-surface); border-top: 1px solid var(--tt-border) !important; color: var(--tt-muted); }

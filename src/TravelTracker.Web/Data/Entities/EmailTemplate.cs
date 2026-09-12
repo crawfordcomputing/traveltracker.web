@@ -12,6 +12,10 @@ public enum EmailTemplateKey
     TripApproved = 3,
     TripRejected = 4,
     Invitation = 5,
+
+    // Sent when an admin creates a user: a one-time link to set their own password.
+    // Separate from PasswordReset so the wording can welcome a brand-new account.
+    AccountSetup = 6,
 }
 
 // Who a template variant is for. Internal = recipient's domain is one of ours

@@ -29,7 +29,7 @@ public class SplitModel : ExpensePageModel
     {
         public ExpenseCategory Category { get; set; } = ExpenseCategory.Unspecified;
 
-        [Range(0.01, 1_000_000, ErrorMessage = "Enter an amount greater than zero.")]
+        [Required, Range(0.01, 1_000_000, ErrorMessage = "Enter an amount greater than zero.")]
         public decimal Amount { get; set; }
 
         [StringLength(500)]

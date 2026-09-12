@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using TravelTracker.Web.Auth;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
 
@@ -29,11 +30,24 @@ public static class AuthSetup
                 options.SignIn.RequireConfirmedAccount =
                     config.GetValue<bool>("Auth:RequireConfirmedEmail");
                 options.User.RequireUniqueEmail = true;
+
+                // Password links (forgot-password, admin account setup, admin reset)
+                // come from our own provider so their lifetime is explicit and
+                // independent of email-confirmation tokens.
+                options.Tokens.PasswordResetTokenProvider = PasswordSetupTokenProvider.ProviderName;
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders()
+            .AddTokenProvider<PasswordSetupTokenProvider>(PasswordSetupTokenProvider.ProviderName)
             // Custom SignInManager blocks deactivated (IsActive=false) accounts.
             .AddSignInManager<AppSignInManager>();
+
+        // How long a password link stays usable. Explicit rather than inherited from
+        // Identity's 1-day default, so an org can shorten it without touching the
+        // email-confirmation tokens. Admin-issued credentials therefore expire on
+        // their own (previously an admin's temporary password lived forever).
+        services.Configure<PasswordSetupTokenProviderOptions>(o => o.TokenLifespan =
+            TimeSpan.FromHours(config.GetValue<int?>("Auth:PasswordSetup:LifetimeHours") ?? 24));
 
         // Session hardening: travelers sign in on shared/hotel machines, so bound both an
         // idle timeout and an absolute cap. Idle timeout = ExpireTimeSpan + sliding renewal;

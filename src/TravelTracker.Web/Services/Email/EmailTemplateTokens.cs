@@ -67,6 +67,12 @@ public static class EmailTemplateTokens
                 "Sent when an admin creates or resends an invite. The invitee has no account yet, so RecipientName is empty.",
                 Common.Concat(new[] { "InviteLink", "Invite.Role", "Invite.ExpiresAt", "InvitedBy.Name" }).ToList(),
                 new[] { "InviteLink" }),
+
+            [EmailTemplateKey.AccountSetup] = new(
+                "Account setup",
+                "Sent when an admin creates a user. Carries a one-time link to choose a password; the account has none until it is used.",
+                Common.Concat(new[] { "SetupLink", "Setup.ExpiresIn" }).ToList(),
+                new[] { "SetupLink" }),
         };
 
     public static Spec For(EmailTemplateKey key) => Specs[key];
@@ -118,6 +124,10 @@ public static class EmailTemplateTokens
                 d["Invite.Role"] = "Employee";
                 d["Invite.ExpiresAt"] = InviteExpiry(DateTimeOffset.UtcNow.AddDays(7));
                 d["InvitedBy.Name"] = "Alex Admin";
+                break;
+            case EmailTemplateKey.AccountSetup:
+                d["SetupLink"] = "https://example.com/Account/ResetPassword?email=sam%40example.com&token=SAMPLE";
+                d["Setup.ExpiresIn"] = "24 hours";
                 break;
         }
         return d;

@@ -4,8 +4,8 @@ Open-source business travel tracker. Log trips, run approvals, and track travel
 expenses and mileage. Built as a single ASP.NET Core app that deploys to Azure
 App Service via GitHub Actions with minimal fuss.
 
-> **Status:** Milestone M1 (authentication + roles). See
-> [`tasks/todo.md`](tasks/todo.md) for the full roadmap.
+> **Status:** Milestone M1 (authentication + roles). Planned work is tracked in
+> [GitHub Issues](https://github.com/crawfordcomputing/traveltracker.web/issues).
 
 ## Tech stack
 
@@ -331,12 +331,15 @@ src/TravelTracker.Web/       ASP.NET Core Razor Pages app
 test/TravelTracker.Tests/    xUnit unit + integration tests
 infra/main.bicep             Optional Azure infrastructure
 .github/workflows/deploy.yml GitHub Actions CI/CD
-tasks/todo.md                Roadmap (M0–M5)
+.github/ISSUE_TEMPLATE/      Issue forms (bug, feature, docs)
+CONTRIBUTING.md              Build, test, and pull-request conventions
 ```
 
 ## Contributing
 
-Issues and PRs welcome. See the roadmap in `tasks/todo.md` for what's planned.
+Issues and PRs welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the
+build and test gates, and PR conventions. Planned work lives in
+[Issues](https://github.com/crawfordcomputing/traveltracker.web/issues).
 
 ## License
 

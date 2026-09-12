@@ -1,0 +1,26 @@
+name: Documentation problem
+description: Something in the README or setup docs is wrong, missing, or out of date
+labels: ["documentation"]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: File and section, or a link to the exact lines.
+      placeholder: README.md, "Azure App Service settings"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: What it says now, and why that is wrong, unclear, or stale.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested wording
+      description: Optional. A sentence or two beats a full rewrite.

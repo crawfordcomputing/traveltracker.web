@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup and configuration help
+    url: https://github.com/crawfordcomputing/traveltracker.web#configuration
+    about: Connection strings, Entra ID, email, storage, and App Service settings are documented in the README.
+  - name: Contributing guide
+    url: https://github.com/crawfordcomputing/traveltracker.web/blob/main/CONTRIBUTING.md
+    about: How to build, test, and open a pull request.

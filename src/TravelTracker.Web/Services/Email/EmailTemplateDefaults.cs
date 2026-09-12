@@ -53,6 +53,13 @@ public static class EmailTemplateDefaults
             "<p><a href=\"{{InviteLink}}\">Accept your invitation</a></p>" +
             "<p>This link expires on {{Invite.ExpiresAt}}. If you weren't expecting it, you can safely ignore this email.</p>"),
 
+        EmailTemplateKey.AccountSetup => new(
+            "Set up your {{AppName}} account",
+            "<p>An account has been created for you on {{AppName}}.</p>" +
+            "<p><a href=\"{{SetupLink}}\">Choose your password</a></p>" +
+            "<p>This link can be used once and expires in {{Setup.ExpiresIn}}. " +
+            "If it expires, ask an administrator to send a new one.</p>"),
+
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No default template."),
     };
 }

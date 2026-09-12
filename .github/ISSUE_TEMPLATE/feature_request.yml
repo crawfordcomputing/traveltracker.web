@@ -1,0 +1,72 @@
+name: Feature or enhancement
+description: Propose new behavior, or an improvement to existing behavior
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This mirrors how work is written up here: **why** it exists, **what is
+        already in place**, and **what done looks like**. Filling those in is what
+        turns an idea into something someone else can pick up.
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The problem or gap. Who hits it, and what it costs them today.
+      placeholder: |
+        Travelers incur foreign-currency expenses, but there is no way to enter
+        the original currency and FX rate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: already
+    attributes:
+      label: Already in place
+      description: Existing schema, services, or UI this can build on. Name the types or files if you know them.
+      placeholder: |
+        Frozen Currency / FxRate / FxRateDate / BaseAmount columns already exist,
+        so no migration is needed.
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: Acceptance criteria, as a checklist. Concrete enough that someone else can tell when it is finished.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Auth / identity / roles
+        - Trips
+        - Expenses / mileage
+        - Approvals
+        - Reporting / exports
+        - Admin / notifications / email
+        - Infrastructure / CI / deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other options, and why this one. If the choice is architectural, say so.
+
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Fit
+      options:
+        - label: This keeps the zero-config local setup working (new services stay optional and config-gated).
+        - label: I would be willing to work on this.

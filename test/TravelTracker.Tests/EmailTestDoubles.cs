@@ -41,6 +41,30 @@ internal sealed class NoopEmailTemplateService : IEmailTemplateService
         => Task.FromResult(new ResolvedTemplate(EmailTemplateDefaults.Get(key), null));
 }
 
+// Records template-level sends (key, recipient, tokens) without touching a DB or
+// sender. Used by the admin password-link tests.
+internal sealed class RecordingEmailTemplateService : IEmailTemplateService
+{
+    public Exception? Throw { get; init; }
+    public List<(EmailTemplateKey Key, string Recipient, IReadOnlyDictionary<string, string?> Tokens)> Sent { get; } = new();
+
+    public Task SendAsync(EmailTemplateKey key, string recipient, IReadOnlyDictionary<string, string?> tokens)
+    {
+        if (Throw is not null) return Task.FromException(Throw);
+        Sent.Add((key, recipient, tokens));
+        return Task.CompletedTask;
+    }
+
+    public Task SendTestAsync(EmailTemplateKey key, EmailAudience audience, EmailTemplateContent content, string recipient)
+        => Task.CompletedTask;
+
+    public EmailTemplateContent RenderSample(EmailTemplateKey key, EmailTemplateContent content, string recipient)
+        => content;
+
+    public Task<ResolvedTemplate> ResolveAsync(EmailTemplateKey key, EmailAudience audience)
+        => Task.FromResult(new ResolvedTemplate(EmailTemplateDefaults.Get(key), null));
+}
+
 internal static class EmailTemplateServices
 {
     // The real template service over a real DB and a fake sender.

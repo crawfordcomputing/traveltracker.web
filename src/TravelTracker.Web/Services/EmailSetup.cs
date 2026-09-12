@@ -39,6 +39,9 @@ public static class EmailSetup
         // Reused by self-serve registration and the resend-confirmation page.
         services.AddScoped<EmailConfirmationService>();
 
+        // One-time password links for admin user-create and admin reset.
+        services.AddScoped<PasswordSetupMailer>();
+
         return services;
     }
 }

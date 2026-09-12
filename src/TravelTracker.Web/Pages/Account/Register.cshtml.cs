@@ -87,6 +87,16 @@ public class RegisterModel : PageModel
 
             if (!TryValidateInviteInput()) return Page();
 
+            // An admin may have created the account directly since the invite was
+            // sent. Say so plainly instead of surfacing Identity's duplicate-email
+            // error on a form the invitee can't fix.
+            if (await _userManager.FindByEmailAsync(invite.Email) is not null)
+            {
+                ModelState.AddModelError(string.Empty,
+                    "An account already exists for this email. Sign in instead, or use Forgot password if you don't have one yet.");
+                return Page();
+            }
+
             var invitedUser = new AppUser
             {
                 UserName = invite.Email,

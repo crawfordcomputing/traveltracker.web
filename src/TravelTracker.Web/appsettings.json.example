@@ -46,6 +46,9 @@
     "Session": {
       "IdleTimeoutMinutes": 30,
       "AbsoluteExpiryHours": 8
+    },
+    "PasswordSetup": {
+      "LifetimeHours": 24
     }
   },
   "Email": {

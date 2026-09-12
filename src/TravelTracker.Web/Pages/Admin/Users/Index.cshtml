@@ -24,13 +24,24 @@
     <a asp-page="/Admin/Users/Create" class="btn btn-primary">Add user</a>
 </div>
 
-@if (TempData["NewUserPassword"] is string pwd)
+@if (TempData["SetupLink"] is string setupLink)
 {
+    var emailed = TempData["SetupEmailed"] is true;
     <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <strong>@(TempData["PasswordHeadline"] ?? "Temporary password set.")</strong>
-        Temporary password for <code>@TempData["NewUserEmail"]</code>:
-        <code class="user-select-all">@pwd</code>
-        <div class="small mt-1">Copy it now — it won't be shown again. Share it securely and have the user change it after signing in.</div>
+        <strong>@(TempData["SetupHeadline"] ?? "Password link issued.")</strong>
+        @if (emailed)
+        {
+            <span>A one-time link was emailed to <code>@TempData["SetupEmail"]</code>.</span>
+        }
+        else
+        {
+            <span>The email could not be sent to <code>@TempData["SetupEmail"]</code> — share this link instead.</span>
+        }
+        <div class="mt-1"><code class="user-select-all small">@setupLink</code></div>
+        <div class="small mt-1">
+            Usable once, expires in @(TempData["SetupExpiresIn"] ?? "24 hours"). It sets no password by
+            itself — the user chooses their own. It won't be shown again.
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
@@ -149,8 +160,8 @@
                     <button type="submit" class="btn btn-sm btn-outline-secondary"
                             formaction="@Url.Page("/Admin/Users/Index", "ResetPassword", new { id = u.Id })"
                             formmethod="post"
-                            onclick="return confirm('Reset the password for @u.Email? A new temporary password will be shown once.');">
-                        Reset password
+                            onclick="return confirm('Email @u.Email a one-time link to set a new password? Their current password keeps working until they use it.');">
+                        Send reset link
                     </button>
                     @if (u.IsActive)
                     {

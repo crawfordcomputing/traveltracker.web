@@ -1,0 +1,92 @@
+name: Bug report
+description: Something in Travel Tracker does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please scrub connection strings, passwords, tokens,
+        and real user data out of anything you paste below.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+      placeholder: |
+        Expected: submitting a trip with no approver shows a validation error.
+        Actual: the page returns a 500.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Commit SHA, tag, or the date you pulled main.
+      placeholder: e.g. a1b2c3d, or "main as of 2026-09-12"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - LocalDB (MSSQLLocalDB)
+        - SQL Server (on-prem or container)
+        - Azure SQL
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication mode
+      options:
+        - Local accounts (Identity)
+        - Entra ID SSO (Auth:EnableEntraId=true)
+        - Both
+        - Not applicable
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Where it runs
+      options:
+        - Local dev (dotnet run)
+        - Azure App Service
+        - Other host
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, stack trace, or screenshots
+      description: Paste the relevant part. It renders as a code block, no backticks needed.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed secrets (connection strings, passwords, tokens) from everything I pasted.
+          required: true

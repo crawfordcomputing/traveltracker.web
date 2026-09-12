@@ -60,19 +60,24 @@
     <div class="mb-3">
         <label asp-for="Input.Attendees" class="form-label"></label>
         <input asp-for="Input.Attendees" class="form-control" placeholder="e.g. Jane Doe (client), Bob Lee" />
-        <div class="form-text">Recommended for Meals &amp; Entertainment: who was present.</div>
+        <div class="form-text">Expected for Meals &amp; Entertainment: who was present.</div>
     </div>
     <div class="mb-3">
         <label asp-for="Input.BusinessPurpose" class="form-label"></label>
         <input asp-for="Input.BusinessPurpose" class="form-control" placeholder="e.g. Contract renewal discussion" />
+        <div class="form-text">Expected for Meals &amp; Entertainment.</div>
     </div>
 
     <div class="mb-3">
         <label asp-for="Receipt" class="form-label">
-            @(Model.HasReceipt ? "Replace receipt" : "Receipt") (PDF or image, optional)
+            @(Model.HasReceipt ? "Replace receipt" : "Receipt") (PDF or image@(Model.ReceiptRequired ? "" : ", optional"))
         </label>
         <input asp-for="Receipt" class="form-control" type="file"
                accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" />
+        @if (Model.ReceiptRequired && !Model.HasReceipt)
+        {
+            <div class="form-text">Expected by policy over @Model.ReceiptThreshold.ToString("C0").</div>
+        }
         <span asp-validation-for="Receipt" class="text-danger"></span>
         @if (Model.HasReceipt)
         {
@@ -91,8 +96,11 @@
         <div class="mb-3">
             <label asp-for="Input.MissingReceiptAffidavit" class="form-label"></label>
             <textarea asp-for="Input.MissingReceiptAffidavit" class="form-control" rows="2"
-                      placeholder="If no receipt: state why (policy under @Model.ReceiptThreshold.ToString("C0"))."></textarea>
-            <div class="form-text">Receipts are required by policy; type a justification when one is unavailable.</div>
+                      placeholder="If no receipt: state why."></textarea>
+            <div class="form-text">
+                Only needed when no receipt is attached. At or under
+                @Model.ReceiptThreshold.ToString("C0") a justification can stand in for the receipt.
+            </div>
         </div>
     }
 

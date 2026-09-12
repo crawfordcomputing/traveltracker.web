@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using TravelTracker.Web.Data;
 using TravelTracker.Web.Data.Entities;
 using TravelTracker.Web.Domain;
+using TravelTracker.Web.Services;
 
 namespace TravelTracker.Web.Pages.Admin.Users;
 
@@ -13,11 +14,13 @@ public class IndexModel : PageModel
 {
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
+    private readonly PasswordSetupMailer _setup;
 
-    public IndexModel(AppDbContext db, UserManager<AppUser> userManager)
+    public IndexModel(AppDbContext db, UserManager<AppUser> userManager, PasswordSetupMailer setup)
     {
         _db = db;
         _userManager = userManager;
+        _setup = setup;
     }
 
     public record Row(string Id, string Email, string DisplayName, string? Department, string Roles, bool IsActive, string? Approver, string? DeptDefaultApprover);
@@ -165,29 +168,29 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
-    // Admin-initiated password reset: mint a strong one-time password and set it via
-    // Identity's reset flow (which also rotates the security stamp, so the user's
-    // existing sessions die at the next revalidation). The password is shown to the
-    // admin exactly once via the same alert as new-user creation; it is never stored
-    // in plaintext, so the admin must copy it now and share it securely.
+    // Admin-initiated password reset: email the user a one-time link to choose their
+    // own password, and surface it for the admin as a fallback. No password is ever
+    // generated or handed over, so nothing an admin saw can be replayed later.
+    //
+    // The user's current password keeps working until they set a new one (same
+    // semantics as self-service "Forgot password"), so a bounced email can't lock
+    // anyone out. To cut off a compromised account now, deactivate it — that bumps
+    // the security stamp and kills live sessions.
     public async Task<IActionResult> OnPostResetPasswordAsync(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
 
-        var password = TempPassword.Generate();
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        var result = await _userManager.ResetPasswordAsync(user, token, password);
-        if (!result.Succeeded)
-        {
-            TempData["Error"] = "Could not reset the password: " +
-                string.Join("; ", result.Errors.Select(e => e.Description));
-            return RedirectToPage();
-        }
+        var token = await _setup.CreateTokenAsync(user);
+        var link = Url.Page("/Account/ResetPassword", pageHandler: null,
+            values: new { email = user.Email, token }, protocol: Request.Scheme);
+        var sent = await _setup.TrySendPasswordResetAsync(user, link!);
 
-        TempData["PasswordHeadline"] = "Password reset.";
-        TempData["NewUserEmail"] = user.Email;
-        TempData["NewUserPassword"] = password;
+        TempData["SetupHeadline"] = "Password reset link issued.";
+        TempData["SetupEmail"] = user.Email;
+        TempData["SetupLink"] = link;
+        TempData["SetupEmailed"] = sent;
+        TempData["SetupExpiresIn"] = _setup.LifetimeText;
         return RedirectToPage();
     }
 }
