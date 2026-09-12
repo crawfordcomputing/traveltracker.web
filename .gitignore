@@ -5,8 +5,11 @@
 
 # dotenv files
 .env
-# Ignore all appsettings files in any subdirectory
-**/appsettings.json
+# appsettings.json is tracked on purpose: it is the credential-free baseline that
+# every clone and git worktree needs, and the docs describe it as such. Real
+# values come from user-secrets locally and app settings / Key Vault in Azure.
+# The per-environment overlays below carry deployment-specific values and do
+# stay out of the repo.
 **/appsettings.Development.json
 **/appsettings.Production.json
 
