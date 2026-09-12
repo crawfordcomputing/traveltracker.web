@@ -5,12 +5,12 @@
 
 # dotenv files
 .env
-# appsettings.json is tracked on purpose: it is the credential-free baseline that
-# every clone and git worktree needs, and the docs describe it as such. Real
-# values come from user-secrets locally and app settings / Key Vault in Azure.
-# The per-environment overlays below carry deployment-specific values and do
-# stay out of the repo.
-**/appsettings.Development.json
+# appsettings.json and appsettings.Development.json are tracked on purpose: they
+# are the credential-free baseline and dev overlay that every clone and git
+# worktree needs in order to behave like main, and the docs describe them as
+# such. Every real credential lives in user-secrets locally (machine-level, so
+# every worktree already shares them) and in app settings / Key Vault in Azure.
+# Never put a credential in either file. Production values stay out of the repo.
 **/appsettings.Production.json
 
 # ignore tasks
